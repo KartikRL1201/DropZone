@@ -1,0 +1,37 @@
+{
+  "name": "dropzone",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Decentralized Disaster Relief Allocation Engine — A multi-app ecosystem for real-time crisis supply coordination.",
+  "author": "KartikRL1201",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "server",
+    "clients/*"
+  ],
+  "scripts": {
+    "dev:server": "npm run dev --workspace=server",
+    "dev:admin": "npm run dev --workspace=clients/admin-dashboard",
+    "dev:driver": "npm run dev --workspace=clients/driver-app",
+    "dev:volunteer": "npm run dev --workspace=clients/volunteer-portal",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,css,md}\"",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rimraf **/node_modules",
+    "seed": "node scripts/seed.js",
+    "reset-db": "node scripts/reset-db.js"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "prettier": "^3.8.4",
+    "rimraf": "^6.1.3"
+  }
+}
