@@ -7,6 +7,9 @@ import { withLock } from '../locks/lockManager.js';
 import { LockKeys } from '../locks/lockKeys.js';
 import { RequestStatus, AllocationStatus } from '@dropzone/shared-domain';
 
+import { calculatePriorityScore } from '../engine/priority.engine.js';
+import { Crisis } from '../models/Crisis.model.js';
+
 /**
  * Allocation Engine Service
  * 
@@ -46,7 +49,7 @@ export const allocateSupplyToRequest = async ({
     try {
       // 1. Fetch the supply item inside the transaction
       const supply = await SupplyItem.findById(supplyItemId).session(session);
-      if (!supply) throw new Error('Supply item not found.');
+      if (!supply) {throw new Error('Supply item not found.');}
 
       // Double-check category matches
       if (supply.category !== itemCategory) {
@@ -58,9 +61,12 @@ export const allocateSupplyToRequest = async ({
         throw new Error(`Insufficient inventory. Requested ${quantityToAllocate}, but only ${supply.availableQuantity} available.`);
       }
 
-      // 2. Fetch the Volunteer Request inside the transaction
+      // 2. Fetch the Volunteer Request and Crisis inside the transaction
       const request = await VolunteerRequest.findById(requestId).session(session);
-      if (!request) throw new Error('Volunteer request not found.');
+      if (!request) {throw new Error('Volunteer request not found.');}
+
+      const crisis = await Crisis.findById(request.crisisId).session(session);
+      if (!crisis) {throw new Error('Crisis zone not found.');}
 
       // Find the specific item in the request array
       const requestItem = request.items.find(item => item.category === itemCategory);
@@ -95,6 +101,14 @@ export const allocateSupplyToRequest = async ({
       }
       await request.save({ session });
 
+      // Calculate fair-share priority score
+      const calculatedScore = calculatePriorityScore({
+        crisisSeverity: crisis.severity,
+        requestUrgency: request.urgency,
+        submittedAt: request.submittedAt,
+        peopleCount: request.peopleCount,
+      });
+
       // 5. Create the Allocation Record
       const allocation = new Allocation({
         crisisId: request.crisisId,
@@ -103,7 +117,7 @@ export const allocateSupplyToRequest = async ({
         category: itemCategory,
         quantity: quantityToAllocate,
         status: AllocationStatus.PENDING,
-        priorityScore: 100, // Placeholder for the actual scoring engine
+        priorityScore: calculatedScore,
       });
       await allocation.save({ session });
 

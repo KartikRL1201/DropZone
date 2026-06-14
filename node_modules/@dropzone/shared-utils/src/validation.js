@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CrisisSeverity, SupplyCategory, UrgencyLevel } from '@dropzone/shared-domain';
+import { CrisisSeverity, SupplyCategory, UrgencyLevel, SupplyUnit } from '@dropzone/shared-domain';
 
 // --- Shared Constants ---
 export const AppConstants = {
@@ -45,4 +45,35 @@ export const CreateVolunteerRequestSchema = z.object({
     description: z.string().min(3).max(100),
     quantityNeeded: z.number().positive(),
   })).min(1).max(AppConstants.MAX_ITEMS_PER_REQUEST),
+});
+
+export const CreateSupplySchema = z.object({
+  crisisId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid MongoDB ID'),
+  name: z.string().min(3).max(100),
+  category: z.nativeEnum(SupplyCategory),
+  totalQuantity: z.number().positive(),
+  unit: z.nativeEnum(SupplyUnit),
+  warehouseLocation: GeoPointSchema,
+  lowStockThreshold: z.number().nonnegative().optional(),
+  batchId: z.string().optional(),
+  expiresAt: z.string().datetime().optional(), // ISO string date
+});
+
+// For updates, we can't change the category or unit easily without messing up math.
+// So we limit what can be updated.
+export const UpdateSupplySchema = z.object({
+  totalQuantity: z.number().positive().optional(),
+  lowStockThreshold: z.number().nonnegative().optional(),
+  warehouseLocation: GeoPointSchema.optional(),
+});
+
+export const UpdateLocationSchema = z.object({
+  coordinates: z.tuple([
+    z.number().min(-180).max(180), // Longitude
+    z.number().min(-90).max(90),   // Latitude
+  ]),
+});
+
+export const CompleteWaypointSchema = z.object({
+  allocationId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid MongoDB ID'),
 });

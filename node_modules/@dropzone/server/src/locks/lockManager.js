@@ -54,7 +54,7 @@ export const withLock = async (resourceKey, criticalSectionFn, ttlMs = env.LOCK_
   } catch (error) {
     if (error.name === 'ExecutionError') {
       // This is a Redlock error indicating the lock could not be acquired
-      throw new Error(`Resource ${resourceKey} is currently busy. Please try again.`);
+      throw new Error(`Resource ${resourceKey} is currently busy. Please try again.`, { cause: error });
     }
     // Re-throw application errors from within the critical section
     throw error;

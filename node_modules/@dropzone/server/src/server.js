@@ -3,6 +3,9 @@ import app from './app.js';
 import { env } from './config/env.config.js';
 import { connectDB } from './config/db.config.js';
 import { closeRedis } from './config/redis.config.js';
+import { initSocket } from './sockets/socketManager.js';
+import { initWorker, closeWorker, maintenanceQueue } from './jobs/workerManager.js';
+import './jobs/cleanup.job.js'; // Import to ensure it registers the processor
 
 // Create the HTTP server wrapping the Express app
 // We do this instead of app.listen() so we can easily attach Socket.IO later
@@ -14,7 +17,22 @@ const startServer = async () => {
     // 1. Connect to Database
     await connectDB();
     
-    // 2. Start listening for HTTP requests
+    // 2. Initialize Real-Time WebSockets
+    initSocket(server);
+    console.log('✅ WebSockets (Socket.IO) Initialized');
+
+    // 3. Initialize Background Workers
+    initWorker();
+    console.log('✅ Background Workers (BullMQ) Initialized');
+
+    // Schedule the cleanup job to run every 12 hours
+    await maintenanceQueue.add('stale_request_cleanup', {}, {
+      repeat: {
+        pattern: '0 */12 * * *', // Every 12 hours
+      }
+    });
+    
+    // 4. Start listening for HTTP requests
     server.listen(env.PORT, () => {
       console.log(`🚀 DropZone Engine running in ${env.NODE_ENV} mode on port ${env.PORT}`);
     });
@@ -40,6 +58,10 @@ const gracefulShutdown = async (signal) => {
       // Close Redis connection
       await closeRedis();
       console.log('Redis connections closed.');
+      
+      // Close BullMQ workers
+      await closeWorker();
+      console.log('BullMQ workers closed.');
       
       // We will close MongoDB connection here eventually via mongoose.disconnect()
       

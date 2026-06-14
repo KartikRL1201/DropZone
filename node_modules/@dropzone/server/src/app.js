@@ -25,8 +25,10 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API routes will be mounted here later...
-// app.use(env.API_PREFIX, routes);
+import routes from './routes/index.js';
+
+// API routes
+app.use(env.API_PREFIX, routes);
 
 // --- Error Handling ---
 // Catch-all route for unhandled 404s
