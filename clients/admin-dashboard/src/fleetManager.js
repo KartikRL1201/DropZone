@@ -15,7 +15,7 @@ class FleetManager {
         if (!crises) return;
         crises.forEach(crisis => {
             // If the database says it's dispatched, but we have no truck for it in memory, spawn one!
-            if (crisis.status === 'MONITORING') {
+            if (crisis.status === 'MONITORING' && crisis.assignedWarehouseId) {
                 const isDispatched = this.vehicles.some(v => v.crisisId === crisis._id);
                 if (!isDispatched) {
                     this.dispatchTruck(crisis);
@@ -72,30 +72,31 @@ class FleetManager {
         const targetLng = geo.coordinates[0];
         const targetLat = geo.coordinates[1];
 
-        // Find nearest warehouse
-        let nearestHub = null;
-        let shortestDist = Infinity;
-
-        mapManager.landmarks.forEach(lm => {
-            const dist = Math.sqrt(Math.pow(lm.location[0] - targetLat, 2) + Math.pow(lm.location[1] - targetLng, 2));
-            if (dist < shortestDist) {
-                shortestDist = dist;
-                nearestHub = lm;
-            }
-        });
-
-        if (!nearestHub) return;
+        // Find assigned warehouse from backend
+        let hubLat, hubLng;
+        
+        if (crisis.assignedWarehouseId && crisis.assignedWarehouseId.location) {
+            const coords = crisis.assignedWarehouseId.location.coordinates;
+            hubLng = coords[0];
+            hubLat = coords[1];
+        } else {
+            console.error("No assigned warehouse provided by backend!");
+            return;
+        }
 
         // Create new truck
         const truckId = `DPZ-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
         const vehicle = { 
             id: truckId, 
             crisisId: crisis._id,
+            assignedWarehouseId: crisis.assignedWarehouseId._id, // Keep track of where it came from
+            warehouseLocation: [hubLat, hubLng],
+            returning: false,
             route: [], 
             routeIndex: 0, 
             progress: 0, 
             speed: 0.003, 
-            location: [...nearestHub.location], 
+            location: [hubLat, hubLng], 
             heading: 0, 
             target: [targetLat, targetLng] 
         };
@@ -103,7 +104,7 @@ class FleetManager {
         this.vehicles.push(vehicle);
 
         // Fetch Route
-        const route = await this.fetchOSRMRoute(nearestHub.location[0], nearestHub.location[1], targetLat, targetLng);
+        const route = await this.fetchOSRMRoute(hubLat, hubLng, targetLat, targetLng);
         if (route && route.length > 0) {
             vehicle.route = route;
             
@@ -167,20 +168,75 @@ class FleetManager {
             this._updatePositions();
             mapManager.renderFleet(this.vehicles);
         }, 33);
+
+        // Edge case: If admin closes tab while trucks are returning, they would be lost forever.
+        // We tell the backend to return them immediately.
+        window.addEventListener('beforeunload', () => {
+            this.vehicles.forEach(v => {
+                if (v.returning && v.crisisId) {
+                    // We use sendBeacon so it reliably fires on page close
+                    navigator.sendBeacon(`http://localhost:5000/api/v1/dispatch/return/${v.crisisId}`);
+                }
+            });
+        });
     }
 
     _updatePositions() {
         this.vehicles.forEach((v) => {
             if (!v.route || v.route.length === 0) return;
 
-            // If reached the end of the route, mark the crisis as resolved/deleted and remove the truck
+            // If reached the end of the route
             if (v.routeIndex >= v.route.length - 1) {
-                if (v.crisisId && window.deleteCrisis) {
-                    window.deleteCrisis(v.crisisId);
-                    v.crisisId = null; // Prevent double delete
+                if (!v.returning) {
+                    // Reached the crisis zone! 
+                    // We DO NOT delete the crisis here anymore, so it survives page reloads while returning!
+                    v.returning = true;
+                    
+                    // Hide the marker on the map!
+                    if (v.crisisId) {
+                        if (mapManager.markers[v.crisisId]) {
+                            mapManager.map.removeLayer(mapManager.markers[v.crisisId]);
+                            delete mapManager.markers[v.crisisId];
+                        }
+                        mapManager.hiddenMarkerIds.add(v.crisisId);
+                    }
+                    
+                    // Fetch return route
+                    const startLat = v.location[0];
+                    const startLng = v.location[1];
+                    const endLat = v.warehouseLocation[0];
+                    const endLng = v.warehouseLocation[1];
+
+                    // Fire and forget, the route will update when ready
+                    this.fetchOSRMRoute(startLat, startLng, endLat, endLng).then(route => {
+                        if (route && route.length > 0) {
+                            v.route = route;
+                            v.routeIndex = 0;
+                            v.progress = 0;
+                            mapManager.renderRoute(v.id, route);
+                        } else {
+                            v.done = true; // Fallback if routing fails
+                        }
+                    });
+                    
+                    // Prevent moving until route is loaded
+                    v.route = []; 
+                    return;
+                } else {
+                    // Reached the warehouse!
+                    if (v.crisisId) {
+                        // Tell backend to return the truck and delete the crisis
+                        fetch(`http://localhost:5000/api/v1/dispatch/return/${v.crisisId}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${window.MOCK_HQ_TOKEN || ''}` }
+                        }).catch(console.error);
+                        
+                        v.crisisId = null; // Prevent double delete
+                    }
+                    
+                    // Remove from array since it's done
+                    this.vehicles = this.vehicles.filter(vehicle => vehicle.id !== v.id);
                 }
-                v.done = true;
-                return;
             }
 
             const startPoint = v.route[v.routeIndex];

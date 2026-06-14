@@ -39,6 +39,7 @@ class SocketManager {
         this.socket.on('driver:position', (data) => this._notify('driver:position', data));
         this.socket.on('crisis:new', (data) => this._notify('crisis:new', data));
         this.socket.on('crisis:updated', (data) => this._notify('crisis:updated', data));
+        this.socket.on('warehouse:updated', (data) => this._notify('warehouse:updated', data));
     }
 
     on(event, callback) {

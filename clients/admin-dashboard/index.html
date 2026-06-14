@@ -56,6 +56,34 @@
         #map {
             transition: opacity 0.4s ease;
         }
+
+        /* Map Modal Mode */
+        #map-section.map-modal-mode {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            margin: 0;
+            backdrop-filter: blur(8px);
+        }
+        #map-section.map-modal-mode .map-header {
+            display: none;
+        }
+        #map-section.map-modal-mode .map-container {
+            width: 80vw;
+            height: 80vh;
+            max-width: 1200px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        #map-section.map-modal-mode #map-close-btn {
+            display: flex;
+        }
     </style>
 </head>
 <body class="bg-lumenaLight dark:bg-lumenaDark text-lumenaDark dark:text-lumenaLight font-sans antialiased min-h-screen flex flex-col selection:bg-lumenaDark selection:text-lumenaLight dark:selection:bg-lumenaLight dark:selection:text-lumenaDark overflow-x-hidden">
@@ -64,10 +92,13 @@
 <header class="w-full px-6 md:px-12 py-8 flex justify-between items-center z-50 relative fade-up-element">
     <div class="font-bold tracking-tighter text-xl">DROPZONE / OP-CENTER</div>
     
-    <nav class="hidden md:flex gap-12 font-medium text-xs tracking-widest uppercase opacity-60">
-        <a href="#map-section" class="hover:opacity-100 transition-opacity">Live Map</a>
-        <a href="#queue-section" class="hover:opacity-100 transition-opacity">Queue</a>
-        <a href="#" class="hover:opacity-100 transition-opacity">Inventory</a>
+    <nav class="hidden md:flex relative font-medium text-xs tracking-widest uppercase opacity-60">
+        <div class="flex gap-12 relative z-10">
+            <button id="nav-queue" class="hover:opacity-100 transition-opacity opacity-100 pb-2">Queue</button>
+            <button id="nav-inventory" class="hover:opacity-100 transition-opacity pb-2">Inventory</button>
+            <button id="nav-simulator" class="hover:opacity-100 transition-opacity pb-2">Simulator</button>
+        </div>
+        <div id="nav-slider" class="absolute bottom-0 h-[2px] bg-lumenaDark dark:bg-lumenaLight transition-all duration-300 ease-out"></div>
     </nav>
 
     <div class="flex gap-6 items-center">
@@ -83,11 +114,15 @@
     </div>
 </header>
 
-<main class="flex-1 w-full max-w-[1600px] mx-auto px-6 md:px-12 pb-24">
+<main class="flex-1 w-full max-w-[1600px] mx-auto px-6 md:px-12">
     
     <!-- Hero / Map Section -->
     <section id="map-section" class="mt-8 mb-24 fade-up-element">
-        <div class="flex flex-col md:flex-row justify-between items-end mb-8 gap-8">
+        <button id="map-close-btn" class="hidden absolute top-8 right-8 z-[1001] w-12 h-12 bg-black/50 text-white rounded-full items-center justify-center hover:bg-statusCritical transition-colors backdrop-blur-md border border-white/20">
+            <span class="material-symbols-outlined text-2xl">close</span>
+        </button>
+
+        <div class="map-header flex flex-col md:flex-row justify-between items-end mb-8 gap-8">
             <div class="max-w-3xl">
                 <p class="text-[10px] font-bold tracking-[0.2em] uppercase opacity-40 mb-2">Sector 7G</p>
                 <h1 class="text-3xl md:text-4xl font-bold tracking-tight">Central Command</h1>
@@ -99,16 +134,16 @@
         </div>
 
         <!-- The Map Container -->
-        <div class="w-full h-[500px] bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-2xl overflow-hidden relative editorial-border border">
+        <div class="map-container w-full h-[500px] bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-2xl overflow-hidden relative editorial-border border transition-all duration-300">
             <div id="map" class="w-full h-full z-0"></div>
             <!-- Glass Overlay Info Panel -->
             <div class="absolute bottom-6 left-6 z-10 bg-lumenaLight/90 dark:bg-lumenaDark/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border editorial-border flex items-center gap-4">
                 <div class="relative flex items-center justify-center w-8 h-8">
                     <span class="absolute inset-0 rounded-full bg-statusHigh opacity-20 animate-ping"></span>
-                    <span class="w-3 h-3 rounded-full bg-statusHigh"></span>
+                    <span id="connection-indicator" class="w-3 h-3 rounded-full bg-statusHigh"></span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-sm">System Online</h3>
+                    <h3 id="connection-text" class="font-bold text-sm">System Online</h3>
                     <p class="text-[9px] font-bold tracking-widest uppercase opacity-60">Monitoring Satellite Feed</p>
                 </div>
             </div>
@@ -119,17 +154,16 @@
     <section class="fade-up-element">
         <!-- Tabs Header -->
         <div class="flex flex-col md:flex-row justify-between items-end mb-12 border-b editorial-border pb-2 gap-6">
-            <div class="flex gap-8">
-                <button id="tab-queue" class="text-3xl md:text-4xl font-bold tracking-tighter pb-4 border-b-4 border-lumenaDark dark:border-lumenaLight transition-colors">Active Queue</button>
-                <button id="tab-simulator" class="text-3xl md:text-4xl font-bold tracking-tighter pb-4 border-b-4 border-transparent opacity-40 hover:opacity-100 transition-colors">Simulator</button>
+            <div class="flex gap-8 overflow-x-auto w-full no-scrollbar">
+                <h2 id="section-title" class="text-3xl md:text-4xl font-bold tracking-tighter pb-4 text-lumenaDark dark:text-lumenaLight">Active Queue</h2>
             </div>
-            <div class="flex items-center gap-4 w-full md:w-auto">
-                <button id="btn-clear-queue" class="text-[9px] font-bold tracking-widest uppercase text-statusCritical hover:opacity-70 transition-opacity border border-statusCritical/30 px-4 py-2 rounded-full">
+            <div class="flex items-center gap-4 w-full md:w-auto shrink-0">
+                <button id="btn-clear-queue" class="text-[9px] font-bold tracking-widest uppercase text-statusCritical hover:opacity-70 transition-opacity border border-statusCritical/30 px-4 py-2 rounded-full whitespace-nowrap">
                     Clear All
                 </button>
                 <div class="relative w-full md:w-80" id="queue-search">
                     <span class="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 opacity-40">search</span>
-                    <input type="text" placeholder="Search manifest..." class="w-full bg-transparent border-none pl-8 py-2 focus:ring-0 text-sm font-medium opacity-80 placeholder:opacity-40 outline-none" />
+                    <input id="queue-search-input" type="text" placeholder="Search manifest..." class="w-full bg-transparent border-none pl-8 py-2 focus:ring-0 text-sm font-medium opacity-80 placeholder:opacity-40 outline-none" />
                 </div>
             </div>
         </div>
@@ -145,9 +179,18 @@
             <div id="requests-queue-body" class="flex flex-col gap-2"></div>
         </div>
 
+        <!-- Inventory View -->
+        <div id="view-inventory" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6" id="inventory-grid">
+                <!-- Dynamically populated by inventory.js -->
+            </div>
+        </div>
+
+
         <!-- Simulator View -->
         <div id="view-simulator" class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Random Scenario Generator -->
                 <div class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col">
                     <h3 class="text-xl font-bold mb-2">Random Scenario Generator</h3>
                     <p class="text-sm opacity-60 mb-6 font-medium">Instantly trigger a simulated crisis at a random public landmark in Bengaluru. The closest warehouse will automatically dispatch a truck.</p>
@@ -166,25 +209,28 @@
                         </label>
                     </div>
                 </div>
-                <div class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col justify-center items-center text-center">
-                    <span class="material-symbols-outlined text-4xl mb-4 opacity-40">touch_app</span>
+
+                <!-- Interactive Map Dispatch -->
+                <button id="btn-interactive-map" class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col justify-center items-center text-center hover:bg-lumenaDark/10 dark:hover:bg-lumenaLight/10 transition-colors group">
+                    <span class="material-symbols-outlined text-4xl mb-4 opacity-40 group-hover:opacity-100 transition-opacity">touch_app</span>
                     <h3 class="text-xl font-bold mb-2">Interactive Map Dispatch</h3>
-                    <p class="text-sm opacity-60 font-medium">Click anywhere directly on the map above to select custom coordinates and declare an immediate hotzone.</p>
-                </div>
-            </div>
-            <!-- Speed Slider -->
-            <div class="mt-8 p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <span class="material-symbols-outlined text-xl opacity-60">speed</span>
-                        <h3 class="text-lg font-bold">Fleet Speed</h3>
+                    <p class="text-sm opacity-60 font-medium">Launch the Fullscreen Map and click anywhere to deploy fleets to custom coordinates.</p>
+                </button>
+
+                <!-- Speed Slider -->
+                <div class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col justify-center">
+                    <div class="flex items-center justify-between mb-8">
+                        <div class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-xl opacity-60">speed</span>
+                            <h3 class="text-lg font-bold">Fleet Speed</h3>
+                        </div>
+                        <span id="speed-value" class="font-mono text-sm font-bold bg-lumenaDark/10 dark:bg-lumenaLight/10 px-3 py-1 rounded-full">100.0x</span>
                     </div>
-                    <span id="speed-value" class="font-mono text-sm font-bold bg-lumenaDark/10 dark:bg-lumenaLight/10 px-3 py-1 rounded-full">100.0x</span>
-                </div>
-                <input id="speed-slider" type="range" min="1" max="1000" value="1000" step="1" class="w-full h-2 rounded-full appearance-none cursor-pointer accent-lumenaDark dark:accent-lumenaLight bg-lumenaDark/10 dark:bg-lumenaLight/10" />
-                <div class="flex justify-between text-[9px] font-bold tracking-widest uppercase opacity-40 mt-2">
-                    <span>Slow</span>
-                    <span>Warp</span>
+                    <input id="speed-slider" type="range" min="1" max="1000" value="1000" step="1" class="w-full h-2 rounded-full appearance-none cursor-pointer accent-lumenaDark dark:accent-lumenaLight bg-lumenaDark/10 dark:bg-lumenaLight/10" />
+                    <div class="flex justify-between text-[9px] font-bold tracking-widest uppercase opacity-40 mt-4">
+                        <span>Slow</span>
+                        <span>Warp</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -231,6 +277,18 @@
 <div id="toast-container" class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script type="module" src="/src/main.js"></script>
+    <!-- Fallback Modal -->
+    <div id="fallback-modal" class="hidden fixed inset-0 z-[1000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-lumenaLight dark:bg-lumenaDark text-black dark:text-white p-8 rounded-2xl border editorial-border max-w-md w-full shadow-2xl fade-up-element">
+            <h2 class="text-2xl font-bold tracking-tight mb-2 text-statusCritical">Warehouse Depleted</h2>
+            <p id="fallback-modal-text" class="text-sm font-medium opacity-80 mb-6 leading-relaxed"></p>
+            <div class="flex gap-4 justify-end">
+                <button id="btn-fallback-cancel" class="px-6 py-3 rounded-full text-[10px] font-bold tracking-widest uppercase border editorial-border hover:bg-black/5 dark:hover:bg-white/5 transition-colors">Cancel</button>
+                <button id="btn-fallback-confirm" class="px-6 py-3 rounded-full text-[10px] font-bold tracking-widest uppercase bg-lumenaDark text-lumenaLight dark:bg-lumenaLight dark:text-lumenaDark hover:opacity-90 transition-opacity">Dispatch Alternative</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>

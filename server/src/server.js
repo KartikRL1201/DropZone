@@ -2,6 +2,7 @@ import http from 'http';
 import app from './app.js';
 import { env } from './config/env.config.js';
 import { connectDB } from './config/db.config.js';
+import { seedWarehouses } from './seeders/warehouse.seeder.js';
 import { closeRedis } from './config/redis.config.js';
 import { initSocket } from './sockets/socketManager.js';
 import { initWorker, closeWorker, maintenanceQueue } from './jobs/workerManager.js';
@@ -16,6 +17,7 @@ const startServer = async () => {
   try {
     // 1. Connect to Database
     await connectDB();
+    await seedWarehouses();
     
     // 2. Initialize Real-Time WebSockets
     initSocket(server);

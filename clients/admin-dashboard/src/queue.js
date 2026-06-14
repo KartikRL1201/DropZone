@@ -6,6 +6,16 @@ class QueueManager {
     constructor() {
         this.tbody = document.getElementById('requests-queue-body');
         this.statQueued = document.getElementById('stat-queued');
+        this.crises = [];
+        this.searchTerm = '';
+        
+        const searchInput = document.getElementById('queue-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.searchTerm = e.target.value.toLowerCase().trim();
+                if (this.crises) this.render(this.crises);
+            });
+        }
     }
 
     async fetchAndRender() {
@@ -49,7 +59,21 @@ class QueueManager {
             this.statQueued.innerHTML = `${total.toLocaleString()}<span class="text-sm font-medium tracking-normal opacity-40"> POP</span>`;
         }
 
-        crises.forEach((crisis, index) => {
+        let displayCrises = crises;
+        if (this.searchTerm) {
+            displayCrises = crises.filter(c => {
+                const idString = c._id.substring(c._id.length - 4).toLowerCase();
+                const nameString = (c.name || '').toLowerCase();
+                return idString.includes(this.searchTerm) || nameString.includes(this.searchTerm);
+            });
+        }
+
+        if (displayCrises.length === 0) {
+            this.tbody.innerHTML = '<div class="p-8 text-center opacity-40 font-medium">No active requests matching search.</div>';
+            return;
+        }
+
+        displayCrises.forEach((crisis, index) => {
             const row = document.createElement('div');
             row.className = `grid grid-cols-12 gap-4 items-center p-4 border-b editorial-border grid-row-hover`;
             
@@ -70,7 +94,7 @@ class QueueManager {
 
             row.innerHTML = `
                 <div class="col-span-2 flex flex-col">
-                    <span class="font-bold text-sm tracking-tight">REQ-${crisis._id.substring(0,4).toUpperCase()}</span>
+                    <span class="font-bold text-sm tracking-tight">REQ-${crisis._id.substring(crisis._id.length - 4).toUpperCase()}</span>
                     <span class="${urgencyColorClass} text-[9px] font-bold tracking-widest uppercase mt-1 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-current"></span> ${urgencyText}
                     </span>
@@ -87,7 +111,6 @@ class QueueManager {
                 </div>
                 
                 <div class="col-span-2 text-right flex flex-col items-end justify-center gap-1">
-                    <span class="font-mono text-xs opacity-60 font-medium">${timeWaiting}</span>
                     <div class="flex items-center gap-2 mt-1">
                         ${crisis.status === 'MONITORING' 
                             ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1">Deployed</button>`
@@ -105,10 +128,10 @@ class QueueManager {
     _calculateWaitTime(createdAt) {
         if (!createdAt) return '00:00';
         const diffMs = Date.now() - new Date(createdAt).getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const hours = Math.floor(diffMins / 60).toString().padStart(2, '0');
-        const mins = (diffMins % 60).toString().padStart(2, '0');
-        return `${hours}:${mins}`;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const mins = Math.floor(diffSecs / 60).toString().padStart(2, '0');
+        const secs = (diffSecs % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
     }
 }
 

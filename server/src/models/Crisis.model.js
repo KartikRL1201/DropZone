@@ -61,6 +61,11 @@ const crisisSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    assignedWarehouseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Warehouse',
+      default: null,
+    },
     tags: [
       {
         type: String,

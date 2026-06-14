@@ -51,6 +51,7 @@ export const CrisisService = {
 
     const crises = await Crisis.find(query)
       .sort({ severity: 1, declaredAt: -1 }) // Custom sorting could be added
+      .populate('assignedWarehouseId')
       .skip(skip)
       .limit(limit)
       .lean();

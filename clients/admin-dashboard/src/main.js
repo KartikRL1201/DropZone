@@ -2,6 +2,7 @@ import { socketManager } from './socketManager.js';
 import { queueManager } from './queue.js';
 import { mapManager } from './mapManager.js';
 import { fleetManager } from './fleetManager.js';
+import { inventoryManager } from './inventory.js';
 
 // Connection UI Elements
 const indicator = document.getElementById('connection-indicator');
@@ -9,7 +10,8 @@ const indicatorText = document.getElementById('connection-text');
 
 // Auth Token (Mocking for now, eventually grab from login)
 // In a real app we'd fetch this from localStorage after auth
-const MOCK_HQ_TOKEN = 'mock-hq-token-123';
+window.MOCK_HQ_TOKEN = 'mock-hq-token-123';
+const MOCK_HQ_TOKEN = window.MOCK_HQ_TOKEN;
 
 // Setup connection status listeners
 socketManager.on('status', (status) => {
@@ -73,6 +75,15 @@ socketManager.on('crisis:updated', (data) => {
     queueManager.fetchAndRender();
 });
 
+socketManager.on('warehouse:updated', (data) => {
+    console.log('Warehouse updated, redrawing map markers...', data);
+    const index = mapManager.landmarks.findIndex(lm => lm._id === data._id);
+    if (index !== -1) {
+        mapManager.landmarks[index] = data;
+        mapManager.renderLandmarks();
+    }
+});
+
 // Theme Toggle Logic
 const themeToggleBtn = document.getElementById('theme-toggle');
 
@@ -93,41 +104,88 @@ function initTheme() {
 }
 
 // Map Initialization Hook
-function initMap() {
+async function initMap() {
     mapManager.init();
+    await mapManager.loadWarehouses();
+    inventoryManager.render();
     fleetManager.startSimulation();
 }
 
 function initTabs() {
-    const tabQueue = document.getElementById('tab-queue');
-    const tabSimulator = document.getElementById('tab-simulator');
+    const navQueue = document.getElementById('nav-queue');
+    const navInventory = document.getElementById('nav-inventory');
+    const navSimulator = document.getElementById('nav-simulator');
     const viewQueue = document.getElementById('view-queue');
+    const viewInventory = document.getElementById('view-inventory');
     const viewSimulator = document.getElementById('view-simulator');
     const queueSearch = document.getElementById('queue-search');
+    const sectionTitle = document.getElementById('section-title');
 
-    if(!tabQueue) return;
+    if(!navQueue) return;
 
-    tabQueue.addEventListener('click', () => {
-        tabQueue.classList.remove('border-transparent', 'opacity-40');
-        tabQueue.classList.add('border-lumenaDark', 'dark:border-lumenaLight');
-        tabSimulator.classList.add('border-transparent', 'opacity-40');
-        tabSimulator.classList.remove('border-lumenaDark', 'dark:border-lumenaLight');
+    const navSlider = document.getElementById('nav-slider');
+    const mapSection = document.getElementById('map-section');
+
+    const updateSlider = (activeNav) => {
+        if (!navSlider || !activeNav) return;
+        navSlider.style.width = `${activeNav.offsetWidth}px`;
+        navSlider.style.left = `${activeNav.offsetLeft}px`;
+    };
+
+    const switchTab = (activeNav, activeView, titleText) => {
+        // Reset all navs
+        [navQueue, navInventory, navSimulator].forEach(nav => {
+            if(!nav) return;
+            nav.classList.remove('opacity-100');
+        });
         
-        viewQueue.classList.remove('hidden');
-        viewSimulator.classList.add('hidden');
-        if(queueSearch) queueSearch.classList.remove('hidden');
-    });
+        // Hide all views
+        [viewQueue, viewInventory, viewSimulator].forEach(view => {
+            if(view) view.classList.add('hidden');
+        });
 
-    tabSimulator.addEventListener('click', () => {
-        tabSimulator.classList.remove('border-transparent', 'opacity-40');
-        tabSimulator.classList.add('border-lumenaDark', 'dark:border-lumenaLight');
-        tabQueue.classList.add('border-transparent', 'opacity-40');
-        tabQueue.classList.remove('border-lumenaDark', 'dark:border-lumenaLight');
-        
-        viewSimulator.classList.remove('hidden');
-        viewQueue.classList.add('hidden');
-        if(queueSearch) queueSearch.classList.add('hidden');
-    });
+        // Activate selected nav
+        activeNav.classList.add('opacity-100');
+        activeView.classList.remove('hidden');
+
+        updateSlider(activeNav);
+
+        // Map section only for queue
+        if(mapSection) {
+            if(activeView === viewQueue) {
+                mapSection.classList.remove('hidden');
+                setTimeout(() => {
+                    if (mapManager.map) mapManager.map.invalidateSize();
+                }, 100);
+            }
+            else mapSection.classList.add('hidden');
+        }
+
+        // Update section title
+        if(sectionTitle) sectionTitle.innerText = titleText;
+
+        // Toggle clear button and search
+        const btnClear = document.getElementById('btn-clear-queue');
+        if (activeView === viewQueue) {
+            if (queueSearch) queueSearch.classList.remove('hidden');
+            if (btnClear) btnClear.classList.remove('hidden');
+        } else {
+            if (queueSearch) queueSearch.classList.add('hidden');
+            if (btnClear) btnClear.classList.add('hidden');
+        }
+        // Search bar only for queue
+        if(queueSearch) {
+            if(activeView === viewQueue) queueSearch.classList.remove('hidden');
+            else queueSearch.classList.add('hidden');
+        }
+    };
+
+    // Initialize slider position
+    setTimeout(() => updateSlider(navQueue), 100);
+
+    navQueue.addEventListener('click', () => switchTab(navQueue, viewQueue, 'Active Queue'));
+    if(navInventory) navInventory.addEventListener('click', () => switchTab(navInventory, viewInventory, 'Inventory Status'));
+    if(navSimulator) navSimulator.addEventListener('click', () => switchTab(navSimulator, viewSimulator, 'Simulation Engine'));
 }
 
 function initSimulator() {
@@ -140,6 +198,34 @@ function initSimulator() {
     const modalSeverity = document.getElementById('modal-severity');
 
     if(!btnRandom) return;
+
+    const btnInteractiveMap = document.getElementById('btn-interactive-map');
+    const btnMapClose = document.getElementById('map-close-btn');
+    const mapSection = document.getElementById('map-section');
+    const viewQueue = document.getElementById('view-queue');
+
+    if (btnInteractiveMap) {
+        btnInteractiveMap.addEventListener('click', () => {
+            mapSection.classList.remove('hidden');
+            mapSection.classList.add('map-modal-mode');
+            setTimeout(() => {
+                if (mapManager.map) mapManager.map.invalidateSize();
+            }, 100);
+        });
+    }
+
+    if (btnMapClose) {
+        btnMapClose.addEventListener('click', () => {
+            mapSection.classList.remove('map-modal-mode');
+            // If we are not on the Queue tab, hide the map section again
+            if (viewQueue && viewQueue.classList.contains('hidden')) {
+                mapSection.classList.add('hidden');
+            }
+            setTimeout(() => {
+                if (mapManager.map) mapManager.map.invalidateSize();
+            }, 100);
+        });
+    }
 
     let currentClickCoords = null;
 
@@ -176,23 +262,98 @@ function initSimulator() {
         crisis.status = 'MONITORING';
         queueManager.render(queueManager.crises);
 
-        // Dispatch truck on map
-        fleetManager.dispatchTruck(crisis);
-
-        // Update DB status to MONITORING in the background
+        // Call backend dispatch to allocate trucks and deduct inventory
         try {
-            await fetch(`http://localhost:5000/api/v1/crises/${id}`, {
-                method: 'PATCH',
+            const response = await fetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
+                method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${MOCK_HQ_TOKEN}` 
-                },
-                body: JSON.stringify({ status: 'MONITORING' })
+                }
             });
-        } catch(e) { console.error(e); }
+            const result = await response.json();
+            if (response.ok && result.data) {
+                // Dispatch truck on map using assigned warehouse
+                fleetManager.dispatchTruck(result.data);
+            } else if (response.status === 409 && result.fallback) {
+                // Show Fallback Modal
+                const modal = document.getElementById('fallback-modal');
+                const modalText = document.getElementById('fallback-modal-text');
+                const btnCancel = document.getElementById('btn-fallback-cancel');
+                const btnConfirm = document.getElementById('btn-fallback-confirm');
+
+                const { nearest, alternative } = result.fallback;
+                
+                modalText.innerHTML = `Nearest Hub <strong>(${nearest.name})</strong> is out of stock.<br/>Alternative: <strong>${alternative.name}</strong>.<br/><br/>Do you want to dispatch from the alternative?`;
+                modal.classList.remove('hidden');
+
+                // Clear old listeners
+                const newCancel = btnCancel.cloneNode(true);
+                const newConfirm = btnConfirm.cloneNode(true);
+                btnCancel.parentNode.replaceChild(newCancel, btnCancel);
+                btnConfirm.parentNode.replaceChild(newConfirm, btnConfirm);
+
+                newCancel.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    // Revert UI
+                    crisis.status = 'ACTIVE';
+                    queueManager.render(queueManager.crises);
+                });
+
+                newConfirm.addEventListener('click', async () => {
+                    modal.classList.add('hidden');
+                    // Force dispatch with alternative warehouse
+                    try {
+                        const resAlt = await fetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${MOCK_HQ_TOKEN}` 
+                            },
+                            body: JSON.stringify({ warehouseId: alternative._id })
+                        });
+                        const resAltJson = await resAlt.json();
+                        if (resAlt.ok && resAltJson.data) {
+                            fleetManager.dispatchTruck(resAltJson.data);
+                        } else {
+                            alert(resAltJson.error || "Dispatch failed on fallback");
+                            crisis.status = 'ACTIVE';
+                            queueManager.render(queueManager.crises);
+                        }
+                    } catch(e) {
+                        console.error(e);
+                        crisis.status = 'ACTIVE';
+                        queueManager.render(queueManager.crises);
+                    }
+                });
+            } else {
+                console.error("Dispatch failed:", result.error);
+                // Revert optimistic UI
+                crisis.status = 'ACTIVE';
+                queueManager.render(queueManager.crises);
+                alert(result.error || "Dispatch failed");
+            }
+        } catch(e) { 
+            console.error(e); 
+            // Revert optimistic UI
+            crisis.status = 'ACTIVE';
+            queueManager.render(queueManager.crises);
+        }
     };
 
     window.deleteCrisis = async (id) => {
+        const crisis = queueManager.crises.find(c => c._id === id);
+        
+        // Return fleet if it was dispatched
+        if (crisis && crisis.status === 'MONITORING') {
+            try {
+                await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+                });
+            } catch(e) { console.error(e); }
+        }
+
         // Optimistically remove truck from map immediately
         fleetManager.removeTruckForCrisis(id);
         
@@ -210,6 +371,18 @@ function initSimulator() {
     const btnClearQueue = document.getElementById('btn-clear-queue');
     if (btnClearQueue) {
         btnClearQueue.addEventListener('click', async () => {
+            // First return ALL dispatched trucks
+            for (const crisis of queueManager.crises) {
+                if (crisis.status === 'MONITORING') {
+                    try {
+                        await fetch(`http://localhost:5000/api/v1/dispatch/return/${crisis._id}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+                        });
+                    } catch(e) {}
+                }
+            }
+
             // Optimistically remove all trucks from map immediately
             fleetManager.clearAllTrucks();
             
@@ -286,9 +459,22 @@ function initSimulator() {
         modal.classList.remove('hidden');
     });
 
+    const closeMapModalIfNeeded = () => {
+        if (mapSection && mapSection.classList.contains('map-modal-mode')) {
+            mapSection.classList.remove('map-modal-mode');
+            if (document.getElementById('view-simulator') && !document.getElementById('view-simulator').classList.contains('hidden')) {
+                mapSection.classList.add('hidden');
+            }
+            setTimeout(() => {
+                if (mapManager.map) mapManager.map.invalidateSize();
+            }, 100);
+        }
+    };
+
     modalCancel.addEventListener('click', () => {
         modal.classList.add('hidden');
         currentClickCoords = null;
+        closeMapModalIfNeeded();
     });
 
     modalConfirm.addEventListener('click', () => {
@@ -303,6 +489,7 @@ function initSimulator() {
         });
         modal.classList.add('hidden');
         currentClickCoords = null;
+        closeMapModalIfNeeded();
     });
 
     // Speed Slider
@@ -344,7 +531,7 @@ async function bootstrap() {
     initTheme();
     
     // Initialize Map & Animations
-    initMap();
+    await initMap();
     initAnimations();
     initTabs();
     initSimulator();

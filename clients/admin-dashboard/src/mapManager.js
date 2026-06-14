@@ -5,18 +5,9 @@ class MapManager {
         this.markers = {}; 
         this.fleetMarkers = {}; // For live trucks
         this.routeLayers = {};  // For live routes
-        
-        // Static Warehouses scattered across Bengaluru
-        this.landmarks = [
-            { id: 'hq', name: 'Central Command HQ (Ejipura)', location: [12.9344, 77.6254], icon: 'warehouse', type: 'hq' },
-            { id: 'w1', name: 'Peenya Hub (NW)', location: [13.0285, 77.5197], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w2', name: 'Whitefield Hub (E)', location: [12.9698, 77.7499], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w3', name: 'Electronic City Hub (S)', location: [12.8452, 77.6602], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w4', name: 'Yelahanka Hub (N)', location: [13.1007, 77.5963], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w5', name: 'Kengeri Hub (SW)', location: [12.9177, 77.4838], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w6', name: 'KR Puram Hub (NE)', location: [13.0084, 77.6959], icon: 'inventory_2', type: 'warehouse' },
-            { id: 'w7', name: 'Bannerghatta Hub (Deep S)', location: [12.8158, 77.5844], icon: 'inventory_2', type: 'warehouse' }
-        ];
+        this.warehouseLayers = {}; // For live warehouse popups
+        this.landmarks = []; // Dynamically loaded
+        this.hiddenMarkerIds = new Set();
     }
 
     init() {
@@ -62,38 +53,91 @@ class MapManager {
         this.currentTiles.addTo(this.map);
     }
 
+    async loadWarehouses() {
+        try {
+            const res = await fetch('http://localhost:5000/api/v1/warehouses', {
+                headers: { 'Authorization': `Bearer ${window.MOCK_HQ_TOKEN || ''}` }
+            });
+            const result = await res.json();
+            if (result.success) {
+                this.landmarks = result.data;
+                this.renderLandmarks();
+            }
+        } catch (error) {
+            console.error('Failed to load warehouses:', error);
+        }
+    }
+
     renderLandmarks() {
+        if (!this.map) return;
+        
+        // Remove old warehouse markers
+        Object.values(this.warehouseLayers).forEach(layer => this.map.removeLayer(layer));
+        this.warehouseLayers = {};
+
         this.landmarks.forEach(lm => {
+            const isHq = lm.code === 'hq';
             let colorClass = 'bg-gray-400 text-white border-gray-500';
             let size = 'w-6 h-6 text-[12px]';
             let zIndex = 200;
 
-            if (lm.type === 'hq') {
+            if (isHq) {
                 colorClass = 'bg-lumenaDark text-lumenaLight dark:bg-lumenaLight dark:text-lumenaDark border-white shadow-xl';
                 size = 'w-10 h-10 text-[20px]';
                 zIndex = 500;
-            } else if (lm.type === 'warehouse') {
+            } else {
                 colorClass = 'bg-blue-600 text-white border-blue-300 shadow-md';
                 size = 'w-8 h-8 text-[16px]';
                 zIndex = 400;
-            } else if (lm.type === 'medical') {
-                colorClass = 'bg-red-500 text-white border-red-300 shadow-sm';
-            } else if (lm.type === 'school') {
-                colorClass = 'bg-yellow-500 text-black border-yellow-200 shadow-sm';
-            } else if (lm.type === 'public') {
-                colorClass = 'bg-green-600 text-white border-green-300 shadow-sm';
             }
 
             const iconHtml = `
-                <div class="flex items-center justify-center rounded-full border-[2px] ${colorClass} ${size}">
-                    <span class="material-symbols-outlined" style="font-size: inherit">${lm.icon}</span>
+                <div class="flex items-center justify-center rounded-full border-[2px] ${colorClass} ${size} transition-transform hover:scale-110">
+                    <span class="material-symbols-outlined" style="font-size: inherit">${isHq ? 'warehouse' : 'inventory_2'}</span>
                 </div>
             `;
-            const dim = lm.type === 'hq' ? 40 : (lm.type === 'warehouse' ? 32 : 24);
+            const dim = isHq ? 40 : 32;
             const icon = L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [dim, dim], iconAnchor: [dim/2, dim/2] });
             
-            L.marker(lm.location, {icon: icon, zIndexOffset: zIndex}).addTo(this.map)
-              .bindTooltip(lm.name, { direction: 'top', offset: [0, -(dim/2 - 5)], className: 'font-sans font-bold text-[10px] tracking-widest' });
+            // Extract lat/lng
+            const lng = lm.location.coordinates[0];
+            const lat = lm.location.coordinates[1];
+            
+            // Build the Lumena Popup
+            let inventoryHtml = '';
+            lm.inventory.forEach(item => {
+                inventoryHtml += `
+                    <div class="flex justify-between items-center text-[10px] font-mono border-b border-white/5 pb-1 mb-1">
+                        <span class="opacity-60 uppercase">${item.category}</span>
+                        <span class="font-bold ${item.quantity < 50 ? 'text-statusCritical' : 'text-statusHigh'}">${item.quantity}</span>
+                    </div>
+                `;
+            });
+
+            const popupHtml = `
+                <div class="font-sans text-black p-2 min-w-[200px]">
+                    <div class="flex items-center justify-between mb-2 pb-2 border-b border-black/10">
+                        <h4 class="font-bold text-sm tracking-tight uppercase">${lm.name}</h4>
+                        <span class="px-2 py-0.5 rounded text-[9px] font-bold ${lm.trucks.available > 0 ? 'bg-orange-100 text-orange-600' : 'bg-red-100 text-red-600'}">
+                            ${lm.trucks.available}/${lm.trucks.total} TRUCKS
+                        </span>
+                    </div>
+                    <div class="flex flex-col gap-1 text-[10px] font-bold opacity-80 uppercase">
+                        ${inventoryHtml}
+                    </div>
+                </div>
+            `;
+
+            const marker = L.marker([lat, lng], {icon: icon, zIndexOffset: zIndex})
+              .addTo(this.map)
+              .bindPopup(popupHtml, {
+                  minWidth: 200
+              });
+              
+            // Also add a minimal tooltip for hover
+            marker.bindTooltip(lm.name, { direction: 'top', offset: [0, -(dim/2 - 5)], className: 'font-sans font-bold text-[10px] tracking-widest' });
+
+            this.warehouseLayers[lm._id] = marker;
         });
     }
 
@@ -129,12 +173,18 @@ class MapManager {
         let hasValidCoordinates = false;
 
         crises.forEach(crisis => {
+            if (this.hiddenMarkerIds.has(crisis._id)) return;
+
             const geo = crisis.epicenter || crisis.location;
             if (!geo || !geo.coordinates || geo.coordinates.length !== 2) {
                 return;
             }
             
             const [lng, lat] = geo.coordinates;
+            if (isNaN(lat) || isNaN(lng) || lat === null || lng === null) {
+                return;
+            }
+
             const latLng = [lat, lng];
             
             let colorClass = 'bg-statusLow';
@@ -159,10 +209,31 @@ class MapManager {
             
             const marker = L.marker(latLng, {icon: icon}).addTo(this.map);
             
+            const getDemands = (severity) => {
+                switch(severity) {
+                    case 'CRITICAL': return { MED: '50-150', H2O: '100-250', FOOD: '80-120', BLKTS: '30-80' };
+                    case 'HIGH': return { MED: '30-80', H2O: '50-120', FOOD: '40-80', BLKTS: '10-40' };
+                    case 'MODERATE': return { MED: '10-30', H2O: '20-60', FOOD: '15-35', BLKTS: '5-15' };
+                    case 'LOW': return { MED: '1-10', H2O: '10-30', FOOD: '5-15', BLKTS: '1-10' };
+                    default: return { MED: '5-15', H2O: '15-30', FOOD: '5-15', BLKTS: '2-8' };
+                }
+            };
+            const demands = getDemands(crisis.severity);
+
+            const crisisIdString = crisis._id.substring(crisis._id.length - 4).toUpperCase();
             marker.bindPopup(`
-                <div class="font-sans text-black p-1">
-                    <div class="font-bold text-sm mb-1 tracking-tight">${crisis.name || 'Unknown Crisis'}</div>
-                    <div class="text-[9px] font-bold tracking-widest uppercase opacity-60">Severity: ${crisis.severity}</div>
+                <div class="font-sans text-black p-2 min-w-[150px]">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="font-bold text-sm tracking-tight pr-4">${crisis.name || 'Unknown Crisis'}</div>
+                        <div class="text-[9px] font-bold tracking-widest uppercase opacity-40">REQ-${crisisIdString}</div>
+                    </div>
+                    <div class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 border-b border-black/10 pb-2">Severity: ${crisis.severity}</div>
+                    <div class="text-[9px] font-bold opacity-80 uppercase grid grid-cols-2 gap-1">
+                        <div>MED: <span class="opacity-60">${demands.MED}</span></div>
+                        <div>H2O: <span class="opacity-60">${demands.H2O}</span></div>
+                        <div>FOOD: <span class="opacity-60">${demands.FOOD}</span></div>
+                        <div>BLKTS: <span class="opacity-60">${demands.BLKTS}</span></div>
+                    </div>
                 </div>
             `);
 
@@ -172,8 +243,19 @@ class MapManager {
         });
 
         // Smoothly fly to the new bounding box
-        if (hasValidCoordinates) {
-            this.map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.5 });
+        const mapContainer = this.map.getContainer();
+        const mapSection = document.getElementById('map-section');
+        const isVisible = mapContainer.offsetParent !== null && 
+                         (!mapSection || !mapSection.classList.contains('hidden'));
+
+        if (hasValidCoordinates && isVisible) {
+            try {
+                // Ensure Leaflet's internal size cache is up to date before flying
+                this.map.invalidateSize();
+                this.map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.5 });
+            } catch(e) {
+                console.warn("Leaflet flyToBounds error:", e);
+            }
         }
     }
 
