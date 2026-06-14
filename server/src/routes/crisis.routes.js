@@ -27,4 +27,16 @@ router.patch('/:id',
   CrisisController.updateCrisis
 );
 
+router.delete('/:id',
+  requireAuth,
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]),
+  CrisisController.deleteCrisis
+);
+
+router.delete('/',
+  requireAuth,
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]),
+  CrisisController.deleteAllCrises
+);
+
 export default router;

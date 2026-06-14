@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 
-// Load environment variables from .env file
-dotenv.config({ path: '../../.env' }); // Reaches up from server/src/config to the monorepo root
+// Load environment variables from .env file (relative to process.cwd() which is 'server')
+dotenv.config();
 
 /**
  * Zod schema to rigidly validate environment variables at startup.
@@ -14,7 +14,7 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default('5000'),
   API_PREFIX: z.string().default('/api/v1'),
   
-  MONGODB_URI: z.string().url(),
+  MONGODB_URI: z.string().startsWith('mongodb'),
   MONGODB_DB_NAME: z.string().min(1),
   
   REDIS_HOST: z.string().min(1),

@@ -1,4 +1,4 @@
-import { Worker, Queue, QueueScheduler } from 'bullmq';
+import { Worker, Queue } from 'bullmq';
 import { redisClient } from '../config/redis.config.js';
 
 export const QUEUE_NAMES = {

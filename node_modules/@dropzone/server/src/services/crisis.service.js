@@ -1,6 +1,7 @@
 import { Crisis } from '../models/Crisis.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
 import { CrisisStatus } from '@dropzone/shared-domain';
+import { getIO } from '../sockets/socketManager.js';
 
 export const CrisisService = {
   
@@ -24,6 +25,14 @@ export const CrisisService = {
         after: data,
       }
     });
+
+    // Broadcast to all connected dashboard clients
+    try {
+      const io = getIO();
+      io.emit('crisis:new', crisis.toObject());
+    } catch (e) {
+      console.error('Socket emit failed:', e.message);
+    }
 
     return crisis;
   },
@@ -93,5 +102,33 @@ export const CrisisService = {
     });
 
     return crisis;
+  },
+
+  async deleteCrisis(crisisId, adminUserId) {
+    const crisis = await Crisis.findById(crisisId);
+    if (!crisis) {throw new Error('Crisis not found');}
+    await crisis.deleteOne();
+    await AuditLog.create({
+      userId: adminUserId,
+      action: 'DELETE_CRISIS',
+      entityType: 'Crisis',
+      entityId: crisis._id,
+      changes: { before: crisis.toObject() }
+    });
+    // Broadcast delete event
+    try {
+      const io = getIO();
+      io.emit('crisis:delete', { id: crisisId });
+    } catch (e) {}
+    return true;
+  },
+
+  async deleteAllCrises(adminUserId) {
+    await Crisis.deleteMany({});
+    try {
+      const io = getIO();
+      io.emit('crisis:deleteAll');
+    } catch (e) {}
+    return true;
   }
 };

@@ -32,7 +32,7 @@ app.use(env.API_PREFIX, routes);
 
 // --- Error Handling ---
 // Catch-all route for unhandled 404s
-app.use((req, res, next) => {
+app.use((req, res, _next) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 });
 
 // Global Error Handler Middleware
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('🔥 Unhandled Error:', err);
   
   // Don't leak stack traces in production

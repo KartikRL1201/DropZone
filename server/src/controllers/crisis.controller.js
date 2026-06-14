@@ -3,7 +3,11 @@ import { sendSuccess, sendError, sendPaginated } from '../utils/apiResponse.js';
 import { z } from 'zod';
 import { CreateCrisisSchema } from '@dropzone/shared-utils';
 
-export const UpdateCrisisSchema = CreateCrisisSchema.partial();
+import { CrisisStatus } from '@dropzone/shared-domain';
+
+export const UpdateCrisisSchema = CreateCrisisSchema.partial().extend({
+  status: z.nativeEnum(CrisisStatus).optional(),
+});
 
 export const CrisisController = {
   
@@ -52,6 +56,25 @@ export const CrisisController = {
         return sendError(res, 409, 'Conflict: Crisis was modified by another user. Please refresh and try again.');
       }
       if (error.message === 'Crisis not found') {return sendError(res, 404, error);}
+      return sendError(res, 500, error);
+    }
+  },
+
+  async deleteCrisis(req, res) {
+    try {
+      await CrisisService.deleteCrisis(req.params.id, req.user.id);
+      return sendSuccess(res, 200, null, 'Crisis deleted successfully.');
+    } catch (error) {
+      if (error.message === 'Crisis not found') {return sendError(res, 404, error);}
+      return sendError(res, 500, error);
+    }
+  },
+
+  async deleteAllCrises(req, res) {
+    try {
+      await CrisisService.deleteAllCrises(req.user.id);
+      return sendSuccess(res, 200, null, 'All crises deleted successfully.');
+    } catch (error) {
       return sendError(res, 500, error);
     }
   }

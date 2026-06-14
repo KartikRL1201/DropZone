@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DropZone - Cinematic Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#ff5545",
+                        "surface-container-low": "#1c1b1b",
+                        "on-tertiary-fixed-variant": "#004d63",
+                        "text-dim": "#A1A1A1",
+                        "neon-cyan-glow": "rgba(0, 242, 255, 0.3)",
+                        "on-primary": "#690003",
+                        "neon-red-glow": "rgba(255, 59, 48, 0.4)",
+                        "tertiary": "#68d3fc",
+                        "on-secondary-container": "#006a70",
+                        "secondary": "#ddfcff",
+                        "primary": "#ffb4aa",
+                        "tertiary-container": "#1d9cc3",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#002e3c",
+                        "secondary-container": "#00f1fe",
+                        "surface-variant": "#353534",
+                        "primary-fixed": "#ffdad5",
+                        "on-secondary-fixed-variant": "#004f54",
+                        "on-tertiary-fixed": "#001f29",
+                        "inverse-surface": "#e5e2e1",
+                        "outline": "#ad8883",
+                        "secondary-fixed-dim": "#00dbe7",
+                        "surface-container-high": "#2a2a2a",
+                        "on-error": "#690005",
+                        "secondary-fixed": "#74f5ff",
+                        "on-primary-container": "#5c0002",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#ffb4aa",
+                        "on-primary-fixed": "#410001",
+                        "on-secondary-fixed": "#002022",
+                        "surface-container-highest": "#353534",
+                        "surface-tint": "#ffb4aa",
+                        "on-secondary": "#00363a",
+                        "on-primary-fixed-variant": "#930005",
+                        "tertiary-fixed": "#bbe9ff",
+                        "surface-dim": "#131313",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#68d3fc",
+                        "surface-container-lowest": "#0e0e0e",
+                        "outline-variant": "#5d3f3b",
+                        "surface-bright": "#3a3939",
+                        "on-tertiary": "#003545",
+                        "on-background": "#e5e2e1",
+                        "surface-container": "#201f1f",
+                        "inverse-on-surface": "#313030",
+                        "background": "#08080a",
+                        "inverse-primary": "#c0000a",
+                        "on-surface-variant": "#e7bdb7",
+                        "on-surface": "#e5e2e1",
+                        "border-glass": "rgba(255, 255, 255, 0.08)",
+                        "surface": "#131313",
+                        "surface-glass": "rgba(255, 255, 255, 0.03)",
+                        "status-critical": "#FF3B30",
+                        "status-high": "#FF9500",
+                        "status-medium": "#FFCC00",
+                        "status-low": "#00F2FF"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "sans": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at 50% -20%, #1a1a1f 0%, #08080a 70%);
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-pulse {
+            animation: glowPulse 2s infinite;
+        }
+        @keyframes glowPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.4); opacity: 1; }
+            70% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); opacity: 0.6; }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); opacity: 1; }
+        }
+        .text-tracking-tech {
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .approve-button-glow {
+            box-shadow: 0 0 15px rgba(255, 59, 48, 0.3), inset 0 0 4px rgba(255, 255, 255, 0.2);
+        }
+        .approve-button-glow:hover {
+            box-shadow: 0 0 25px rgba(255, 59, 48, 0.5), inset 0 0 6px rgba(255, 255, 255, 0.3);
+        }
+        .urgency-glow-critical { box-shadow: 0 0 8px rgba(255, 59, 48, 0.4); }
+        .urgency-glow-high { box-shadow: 0 0 8px rgba(255, 149, 0, 0.4); }
+        .urgency-glow-medium { box-shadow: 0 0 8px rgba(255, 204, 0, 0.4); }
+        .urgency-glow-low { box-shadow: 0 0 8px rgba(0, 242, 255, 0.4); }
+        
+        /* Thin border utility */
+        .border-micro { border-width: 0.5px; border-color: rgba(255,255,255,0.08); }
+    </style>
+</head>
+<body class="text-on-surface font-sans antialiased min-h-screen flex flex-col selection:bg-primary/30 selection:text-white">
+<!-- TopNavBar -->
+<header class="hidden md:flex justify-between items-center px-gutter h-16 w-full glass-panel border-b border-white/5 sticky top-0 z-50">
+<div class="flex items-center gap-8">
+<span class="text-2xl font-bold text-white tracking-tighter filter drop-shadow-[0_0_8px_rgba(255,180,170,0.3)]">DROPZONE</span>
+<div class="flex items-center gap-3 px-3 py-1.5 rounded-full border border-white/5 bg-white/5">
+<div class="w-2 h-2 rounded-full bg-status-critical glow-pulse"></div>
+<span class="text-[10px] font-bold text-tracking-tech text-white/60">Live Command Stream</span>
+</div>
+</div>
+<nav class="flex gap-8 h-full">
+<a class="flex items-center h-full text-white/50 text-[13px] font-medium tracking-wide hover:text-white transition-all border-b-2 border-transparent" href="#">LIVE MAP</a>
+<a class="flex items-center h-full text-white text-[13px] font-bold tracking-wide border-b-2 border-primary filter drop-shadow-[0_0_5px_rgba(255,180,170,0.5)]" href="#">REQUESTS QUEUE</a>
+<a class="flex items-center h-full text-white/50 text-[13px] font-medium tracking-wide hover:text-white transition-all border-b-2 border-transparent" href="#">INVENTORY</a>
+<a class="flex items-center h-full text-white/50 text-[13px] font-medium tracking-wide hover:text-white transition-all border-b-2 border-transparent" href="#">FLEET</a>
+</nav>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="text-white/40 hover:text-white transition-colors"><span class="material-symbols-outlined text-[20px]">notifications</span></button>
+<button class="text-white/40 hover:text-white transition-colors"><span class="material-symbols-outlined text-[20px]">settings</span></button>
+</div>
+<div class="w-9 h-9 rounded-full p-[1px] bg-gradient-to-tr from-primary/50 to-transparent">
+<img alt="Dispatcher" class="w-full h-full object-cover rounded-full border border-black/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKPPJ4BBtlHy3oA9pQibci4x1aX-sVbjGh0ZPy0JkZtc9Bnx-eq56_zDYvA7uzKmrgzzpYpqIwqV8AbUh1_RukfnqEPDO2vFtwnnFUhbxSUiVeq9fNM1qf1m-INg3F8UYGoQE4P_1FiCkhPklmJaJMO-EveE6hGUW3oN1ctrBlLPsHyYkFiG37CbtG06LhCfG_SwOZVmCTbGuMq1uU50xhPOVWcvXFEeccyQigBP7vQA5LLg2QXzhMmTdca3hi-XBpyvZvc6kClAl9"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- Sidebar -->
+<aside class="hidden md:flex flex-col w-64 glass-panel border-r border-white/5 p-gutter">
+<div class="mb-10">
+<h2 class="text-[11px] font-bold text-tracking-tech text-white/40 mb-2">OPERATIONS CENTER</h2>
+<div class="bg-white/5 rounded px-3 py-2 border border-white/5">
+<p class="text-[14px] font-semibold text-white">Sector 7G</p>
+<p class="text-[10px] text-primary font-medium tracking-wider uppercase opacity-80">System Active</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1.5 flex-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded text-white/40 hover:bg-white/5 hover:text-white transition-all text-[12px] font-medium tracking-wide group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:text-primary">map</span> LIVE MAP
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded bg-white/5 text-primary border border-white/5 text-[12px] font-bold tracking-wide" href="#">
+<span class="material-symbols-outlined text-[18px]">list_alt</span> REQUESTS QUEUE
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-white/40 hover:bg-white/5 hover:text-white transition-all text-[12px] font-medium tracking-wide group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:text-primary">inventory_2</span> INVENTORY
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded text-white/40 hover:bg-white/5 hover:text-white transition-all text-[12px] font-medium tracking-wide group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:text-primary">local_shipping</span> DRIVER FLEET
+            </a>
+</nav>
+<div class="mt-auto space-y-6">
+<button class="w-full bg-status-critical/90 hover:bg-status-critical text-white font-bold text-[11px] py-3 rounded text-tracking-tech approve-button-glow transition-all active:scale-95">
+                INITIATE DISPATCH
+            </button>
+<div class="pt-4 border-t border-white/5 space-y-2">
+<a class="flex items-center gap-2 text-[11px] text-white/30 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined text-[16px]">help</span> SUPPORT</a>
+<a class="flex items-center gap-2 text-[11px] text-white/30 hover:text-white transition-colors" href="#"><span class="material-symbols-outlined text-[16px]">logout</span> SYSTEM EXIT</a>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto p-8 max-w-[1440px]">
+<div class="flex justify-between items-end mb-10 border-b border-white/5 pb-6">
+<div>
+<h1 class="text-4xl font-light text-white tracking-tight mb-1">Central Requests Queue</h1>
+<p class="text-sm text-white/40 font-medium tracking-wide">Processing current humanitarian needs in Sector 7G</p>
+</div>
+<div class="flex gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/20 text-sm transition-colors group-focus-within:text-primary">search</span>
+<input class="bg-white/5 border border-white/10 rounded w-64 py-2 pl-10 pr-4 text-white text-[13px] placeholder-white/20 focus:outline-none focus:border-primary/50 focus:bg-white/10 transition-all" placeholder="ID, zone, or item..." type="text"/>
+</div>
+<button class="bg-white/5 border border-white/10 rounded px-5 py-2 flex items-center gap-2 hover:bg-white/10 transition-all text-white/60">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+<span class="text-[11px] font-bold tracking-widest uppercase">Filter</span>
+</button>
+</div>
+</div>
+<!-- Data Table Card -->
+<div class="glass-panel rounded-xl overflow-hidden shadow-2xl border-micro">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-white/10 bg-white/[0.02]">
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40">ID NO.</th>
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40">PRIORITY LEVEL</th>
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40">DEPLOYMENT ZONE</th>
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40">MANIFEST</th>
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40 text-right">QUEUE TIME</th>
+<th class="px-6 py-4 text-[10px] font-bold text-tracking-tech text-white/40 text-right">COMMAND</th>
+</tr>
+</thead>
+<tbody class="text-[13px]">
+<!-- Critical -->
+<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors group">
+<td class="px-6 py-5 font-mono text-white/90">REQ-0942</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded-sm text-[10px] font-bold tracking-widest urgency-glow-critical">
+                                CRITICAL
+                            </span>
+</td>
+<td class="px-6 py-5">
+<div class="text-white font-medium">Sector Alpha</div>
+<div class="text-[11px] text-white/40 uppercase">Grid 4 - Emergency Hub</div>
+</td>
+<td class="px-6 py-5 text-white/60">
+<div class="flex flex-wrap gap-2">
+<span class="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[11px]">Medical Kits x50</span>
+<span class="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[11px]">Water 100L</span>
+</div>
+</td>
+<td class="px-6 py-5 font-mono text-status-critical text-right font-medium">00:42:15</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-status-critical text-white px-5 py-2 text-[10px] font-bold tracking-widest uppercase rounded-sm approve-button-glow transition-all hover:scale-105 active:scale-95">APPROVE</button>
+</td>
+</tr>
+<!-- High -->
+<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+<td class="px-6 py-5 font-mono text-white/90">REQ-0941</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 bg-status-high/10 text-status-high border border-status-high/30 rounded-sm text-[10px] font-bold tracking-widest urgency-glow-high">
+                                HIGH
+                            </span>
+</td>
+<td class="px-6 py-5">
+<div class="text-white font-medium">Sector Beta</div>
+<div class="text-[11px] text-white/40 uppercase">Perimeter Wall</div>
+</td>
+<td class="px-6 py-5 text-white/60">Rations (x200), Blankets (x50)</td>
+<td class="px-6 py-5 font-mono text-status-high text-right font-medium">01:15:00</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-transparent border border-white/10 text-white/60 px-5 py-2 text-[10px] font-bold tracking-widest uppercase rounded-sm hover:border-white/40 hover:text-white transition-all">AUDIT</button>
+</td>
+</tr>
+<!-- Medium -->
+<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+<td class="px-6 py-5 font-mono text-white/90">REQ-0938</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 bg-status-medium/10 text-status-medium border border-status-medium/30 rounded-sm text-[10px] font-bold tracking-widest urgency-glow-medium">
+                                MEDIUM
+                            </span>
+</td>
+<td class="px-6 py-5">
+<div class="text-white font-medium">Outpost Delta</div>
+<div class="text-[11px] text-white/40 uppercase">Communications Hub</div>
+</td>
+<td class="px-6 py-5 text-white/60">Comms Equipment (x2)</td>
+<td class="px-6 py-5 font-mono text-status-medium text-right font-medium">02:30:45</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-transparent border border-white/10 text-white/60 px-5 py-2 text-[10px] font-bold tracking-widest uppercase rounded-sm hover:border-white/40 hover:text-white transition-all">AUDIT</button>
+</td>
+</tr>
+<!-- Low -->
+<tr class="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+<td class="px-6 py-5 font-mono text-white/90">REQ-0935</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-1 bg-status-low/10 text-status-low border border-status-low/30 rounded-sm text-[10px] font-bold tracking-widest urgency-glow-low">
+                                LOW
+                            </span>
+</td>
+<td class="px-6 py-5">
+<div class="text-white font-medium">Sector Gamma</div>
+<div class="text-[11px] text-white/40 uppercase">Maintenance Base</div>
+</td>
+<td class="px-6 py-5 text-white/60">Maintenance Supplies</td>
+<td class="px-6 py-5 font-mono text-white/40 text-right font-medium">04:12:10</td>
+<td class="px-6 py-5 text-right">
+<button class="bg-transparent border border-white/10 text-white/60 px-5 py-2 text-[10px] font-bold tracking-widest uppercase rounded-sm hover:border-white/40 hover:text-white transition-all">AUDIT</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Bottom Stat Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10">
+<div class="glass-panel p-5 rounded-lg border-micro">
+<p class="text-[10px] text-white/30 font-bold text-tracking-tech mb-2">AVG RESPONSE</p>
+<p class="text-2xl font-light text-white">12:45 <span class="text-[10px] text-primary">MIN</span></p>
+</div>
+<div class="glass-panel p-5 rounded-lg border-micro">
+<p class="text-[10px] text-white/30 font-bold text-tracking-tech mb-2">QUEUED ASSETS</p>
+<p class="text-2xl font-light text-white">2,481 <span class="text-[10px] text-status-low">KG</span></p>
+</div>
+<div class="glass-panel p-5 rounded-lg border-micro">
+<p class="text-[10px] text-white/30 font-bold text-tracking-tech mb-2">PENDING APPROVAL</p>
+<p class="text-2xl font-light text-status-high">14 <span class="text-[10px] opacity-60">REQS</span></p>
+</div>
+<div class="glass-panel p-5 rounded-lg border-micro">
+<p class="text-[10px] text-white/30 font-bold text-tracking-tech mb-2">UPLINK STRENGTH</p>
+<p class="text-2xl font-light text-status-low">99.8%</p>
+</div>
+</div>
+</main>
+</div>
+</body></html>

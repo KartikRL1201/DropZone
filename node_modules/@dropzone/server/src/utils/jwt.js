@@ -36,7 +36,7 @@ export const generateRefreshToken = (user) => {
 export const verifyAccessToken = (token) => {
   try {
     return jwt.verify(token, env.JWT_ACCESS_SECRET);
-  } catch (err) {
+  } catch {
     return null;
   }
 };
@@ -47,7 +47,7 @@ export const verifyAccessToken = (token) => {
 export const verifyRefreshToken = (token) => {
   try {
     return jwt.verify(token, env.JWT_REFRESH_SECRET);
-  } catch (err) {
+  } catch {
     return null;
   }
 };

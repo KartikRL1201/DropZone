@@ -1,7 +1,6 @@
 {
   "name": "@dropzone/admin-dashboard",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,8 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dropzone/shared-domain": "*",
-    "@dropzone/shared-utils": "*"
+    "leaflet": "^1.9.4",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "vite": "^5.2.0"

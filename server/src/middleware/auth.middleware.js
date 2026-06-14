@@ -19,6 +19,12 @@ export const requireAuth = (req, res, next) => {
     return sendError(res, 401, 'Unauthorized: Token not provided.');
   }
 
+  // Temporary development bypass for Admin Dashboard
+  if (token === 'mock-hq-token-123') {
+    req.user = { id: '111111111111111111111111', role: 'SUPER_ADMIN' };
+    return next();
+  }
+
   const decoded = verifyAccessToken(token);
 
   if (!decoded) {

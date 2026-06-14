@@ -11,8 +11,8 @@ import { sendError } from '../utils/apiResponse.js';
  * all Node.js instances in a cluster/load-balanced environment.
  */
 export const globalRateLimiter = rateLimit({
-  windowMs: env.RATE_LIMIT_WINDOW_MS, // e.g. 15 minutes
-  max: env.RATE_LIMIT_MAX_REQUESTS, // Limit each IP to X requests per window
+  windowMs: 1 * 60 * 1000, // 1 minute window in dev
+  max: 200, // Very generous for development/simulation
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   
