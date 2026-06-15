@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@dropzone/shared-domain": "*",
-    "@dropzone/shared-utils": "*"
+    "@dropzone/shared-utils": "*",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "vite": "^5.2.0"

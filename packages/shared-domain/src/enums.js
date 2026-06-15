@@ -25,6 +25,7 @@ export const SupplyCategory = Object.freeze({
   HYGIENE: 'HYGIENE',
   TOOLS: 'TOOLS',
   COMMUNICATION: 'COMMUNICATION',
+  BLANKETS: 'BLANKETS',
 });
 
 export const SupplyUnit = Object.freeze({
@@ -39,7 +40,7 @@ export const SupplyUnit = Object.freeze({
 export const UrgencyLevel = Object.freeze({
   CRITICAL: 'CRITICAL',
   HIGH: 'HIGH',
-  MEDIUM: 'MEDIUM',
+  MODERATE: 'MODERATE',
   LOW: 'LOW',
 });
 

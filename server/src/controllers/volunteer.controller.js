@@ -10,6 +10,8 @@ export const VolunteerController = {
       return sendSuccess(res, 202, request, 'Your request has been submitted successfully.');
     } catch (error) {
       if (error.message === 'Crisis zone not found.') {return sendError(res, 404, error);}
+      if (error.message.includes('Help is already on the way')) {return sendError(res, 400, error);}
+      if (error.message.includes('outside the active crisis zone')) {return sendError(res, 400, error);}
       return sendError(res, 500, error);
     }
   },

@@ -1,7 +1,9 @@
 import { VolunteerRequest } from '../models/VolunteerRequest.model.js';
 import { Crisis } from '../models/Crisis.model.js';
-import { RequestStatus } from '@dropzone/shared-domain';
+import { RequestStatus, CrisisStatus } from '@dropzone/shared-domain';
 import { AuditLog } from '../models/AuditLog.model.js';
+import { calculateDistanceKm } from '../utils/geo.js';
+import { getIO } from '../sockets/socketManager.js';
 
 export const VolunteerService = {
   
@@ -10,16 +12,40 @@ export const VolunteerService = {
    * This is a public, unauthenticated endpoint.
    */
   async submitRequest(data) {
-    // 1. Verify Crisis exists and is ACTIVE
+    // 1. Verify Crisis exists
     const crisis = await Crisis.findById(data.crisisId).lean();
     if (!crisis) {throw new Error('Crisis zone not found.');}
-    // if (crisis.status === CrisisStatus.RESOLVED) throw new Error('This crisis zone is closed and no longer accepting requests.');
+    
+    // 2. Block Late Requests
+    if (crisis.status === CrisisStatus.MONITORING || crisis.status === CrisisStatus.RESOLVED) {
+      throw new Error('Help is already on the way! We are no longer accepting supply requests for this specific incident.');
+    }
+
+    // 3. Validate Distance (with 10% buffer for GPS inaccuracy)
+    const distanceKm = calculateDistanceKm(data.location.coordinates, crisis.epicenter.coordinates);
+    const maxAllowedDistance = crisis.radiusKm * 1.10;
+    if (distanceKm > maxAllowedDistance) {
+      throw new Error(`Your location is outside the active crisis zone radius (${crisis.radiusKm}km).`);
+    }
 
     try {
       // 2. Attempt to save. The unique index on `idempotencyKey` will throw
       // a MongoDB duplicate key error (code 11000) if the user double-clicked.
       const request = new VolunteerRequest(data);
       await request.save();
+      
+      // Increment the global population value
+      const updatedCrisis = await Crisis.findByIdAndUpdate(
+        crisis._id,
+        { $inc: { estimatedAffected: data.peopleCount || 0 } },
+        { new: true }
+      ).populate('assignedWarehouseId');
+
+      if (updatedCrisis) {
+        const io = getIO();
+        io.emit('crisis:updated', updatedCrisis);
+      }
+
       return request;
       
     } catch (error) {

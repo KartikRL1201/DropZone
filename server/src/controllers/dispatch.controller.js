@@ -1,5 +1,6 @@
 import { Crisis } from '../models/Crisis.model.js';
 import { Warehouse } from '../models/Warehouse.model.js';
+import { VolunteerRequest } from '../models/VolunteerRequest.model.js';
 import { getIO } from '../sockets/socketManager.js';
 import { CrisisStatus } from '@dropzone/shared-domain';
 
@@ -29,10 +30,23 @@ export const dispatchFleet = async (req, res, next) => {
             return res.status(400).json({ success: false, error: `Cannot dispatch to a crisis that is ${crisis.status}` });
         }
 
-        // Generate the randomized supply demand for this crisis if we don't already have one stored
-        // Wait, for consistency if we hit 409, the frontend should send the demand back or we generate it once.
-        // For simplicity, we just generate random and deduct.
-        const suppliesRequired = getRequiredSupplies(crisis.severity);
+        // Aggregate actual supplies requested by citizens
+        const requests = await VolunteerRequest.find({ crisisId: crisis._id, status: 'PENDING' });
+        
+        let suppliesRequired = {
+            MEDICAL: 0,
+            WATER: 0,
+            FOOD: 0,
+            BLANKETS: 0
+        };
+
+        requests.forEach(r => {
+            r.items.forEach(item => {
+                if (suppliesRequired[item.category] !== undefined) {
+                    suppliesRequired[item.category] += item.quantityNeeded;
+                }
+            });
+        });
 
         let selectedWarehouse = null;
 
@@ -111,6 +125,15 @@ export const dispatchFleet = async (req, res, next) => {
 
         // Deduct 1 truck
         selectedWarehouse.trucks.available -= 1;
+        selectedWarehouse.markModified('trucks');
+        
+        console.log('--- DISPATCH DEBUG ---');
+        console.log('Warehouse:', selectedWarehouse.name);
+        console.log('Trucks available after deduct:', selectedWarehouse.trucks.available);
+        console.log('Supplies required:', suppliesRequired);
+        console.log('Inventory after deduct:', selectedWarehouse.inventory.map(i => `${i.category}: ${i.quantity}`));
+        console.log('--- END DISPATCH ---');
+        
         await selectedWarehouse.save();
 
         // Update crisis
@@ -161,7 +184,8 @@ export const returnFleet = async (req, res, next) => {
 
         return res.status(200).json({
             success: true,
-            message: 'Truck returned to warehouse and crisis resolved'
+            message: 'Truck returned to warehouse and crisis resolved',
+            warehouse: warehouse
         });
     } catch (error) {
         next(error);

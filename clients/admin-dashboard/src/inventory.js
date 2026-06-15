@@ -5,6 +5,10 @@ class InventoryManager {
     constructor() {
         this.container = document.getElementById('inventory-grid');
         this.airdropTimers = {};
+        this.airdropIntervals = {};
+
+        // Restore any active cooldowns from localStorage
+        this._restoreCooldowns();
         
         socketManager.on('warehouse:updated', (warehouse) => {
             // Update map
@@ -19,11 +23,68 @@ class InventoryManager {
         });
     }
 
+    _restoreCooldowns() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('airdropCooldowns') || '{}');
+            const now = Date.now();
+            for (const [warehouseId, endTime] of Object.entries(saved)) {
+                const remaining = Math.ceil((endTime - now) / 1000);
+                if (remaining > 0) {
+                    this.airdropTimers[warehouseId] = remaining;
+                    this._startCountdown(warehouseId);
+                } else {
+                    // Expired, clean it up
+                    delete saved[warehouseId];
+                }
+            }
+            localStorage.setItem('airdropCooldowns', JSON.stringify(saved));
+        } catch (e) {
+            console.error('Error restoring airdrop cooldowns', e);
+        }
+    }
+
+    _saveCooldown(warehouseId, seconds) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('airdropCooldowns') || '{}');
+            saved[warehouseId] = Date.now() + (seconds * 1000);
+            localStorage.setItem('airdropCooldowns', JSON.stringify(saved));
+        } catch (e) {
+            console.error('Error saving airdrop cooldown', e);
+        }
+    }
+
+    _clearCooldown(warehouseId) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('airdropCooldowns') || '{}');
+            delete saved[warehouseId];
+            localStorage.setItem('airdropCooldowns', JSON.stringify(saved));
+        } catch (e) {
+            console.error('Error clearing airdrop cooldown', e);
+        }
+    }
+
+    _startCountdown(warehouseId) {
+        if (this.airdropIntervals[warehouseId]) clearInterval(this.airdropIntervals[warehouseId]);
+
+        this.airdropIntervals[warehouseId] = setInterval(() => {
+            if (this.airdropTimers[warehouseId] > 0) {
+                this.airdropTimers[warehouseId]--;
+                this.render();
+            }
+            if (this.airdropTimers[warehouseId] <= 0) {
+                clearInterval(this.airdropIntervals[warehouseId]);
+                delete this.airdropIntervals[warehouseId];
+                delete this.airdropTimers[warehouseId];
+                this._clearCooldown(warehouseId);
+                this.render();
+            }
+        }, 1000);
+    }
+
     async requestAirdrop(warehouseId) {
         if (this.airdropTimers[warehouseId]) return;
 
         try {
-            // We use the same mock token from main.js
             const token = window.MOCK_HQ_TOKEN;
             const res = await fetch(`http://localhost:5000/api/v1/warehouses/${warehouseId}/resupply`, {
                 method: 'POST',
@@ -31,20 +92,11 @@ class InventoryManager {
             });
             const data = await res.json();
             if (res.ok) {
-                this.airdropTimers[warehouseId] = 15;
+                const cooldownSeconds = data.estimatedArrivalSeconds || 60;
+                this.airdropTimers[warehouseId] = cooldownSeconds;
+                this._saveCooldown(warehouseId, cooldownSeconds);
+                this._startCountdown(warehouseId);
                 this.render();
-                
-                const interval = setInterval(() => {
-                    if (this.airdropTimers[warehouseId] > 0) {
-                        this.airdropTimers[warehouseId]--;
-                        this.render();
-                    }
-                    if (this.airdropTimers[warehouseId] <= 0) {
-                        clearInterval(interval);
-                        delete this.airdropTimers[warehouseId];
-                        this.render();
-                    }
-                }, 1000);
             } else {
                 alert(data.error || 'Failed to request airdrop');
             }
@@ -99,7 +151,9 @@ class InventoryManager {
             });
 
             const timer = this.airdropTimers[wh._id];
-            const btnContent = timer ? `INCOMING - 00:${timer.toString().padStart(2, '0')}` : 'Request Airdrop';
+            const timerMins = timer ? Math.floor(timer / 60).toString().padStart(2, '0') : '00';
+            const timerSecs = timer ? (timer % 60).toString().padStart(2, '0') : '00';
+            const btnContent = timer ? `INCOMING — ${timerMins}:${timerSecs}` : 'Request Airdrop';
             const btnClass = timer 
                 ? 'opacity-50 cursor-not-allowed bg-statusHigh/20 border-statusHigh text-statusHigh' 
                 : 'hover:bg-black/5 dark:hover:bg-white/5 border-black/10 dark:border-white/10';

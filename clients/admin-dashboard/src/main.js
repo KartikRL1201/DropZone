@@ -229,6 +229,20 @@ function initSimulator() {
 
     let currentClickCoords = null;
 
+    const getAddressFromCoords = async (lat, lng) => {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
+                headers: { 'Accept-Language': 'en' }
+            });
+            const data = await res.json();
+            const addr = data.address;
+            if (addr) {
+                return addr.neighbourhood || addr.suburb || addr.city_district || addr.road || addr.village || "Unknown Area";
+            }
+        } catch(e) {}
+        return "Unknown Area";
+    };
+
     const postCrisis = async (payload) => {
         try {
             const response = await fetch('http://localhost:5000/api/v1/crises', {
@@ -273,6 +287,15 @@ function initSimulator() {
             });
             const result = await response.json();
             if (response.ok && result.data) {
+                // Synchronously update warehouse UI to prevent any desync
+                if (result.warehouse) {
+                    const index = mapManager.landmarks.findIndex(lm => lm._id === result.warehouse._id);
+                    if (index !== -1) {
+                        mapManager.landmarks[index] = result.warehouse;
+                        mapManager.renderLandmarks();
+                    }
+                }
+                
                 // Dispatch truck on map using assigned warehouse
                 fleetManager.dispatchTruck(result.data);
             } else if (response.status === 409 && result.fallback) {
@@ -314,6 +337,13 @@ function initSimulator() {
                         });
                         const resAltJson = await resAlt.json();
                         if (resAlt.ok && resAltJson.data) {
+                            if (resAltJson.warehouse) {
+                                const index = mapManager.landmarks.findIndex(lm => lm._id === resAltJson.warehouse._id);
+                                if (index !== -1) {
+                                    mapManager.landmarks[index] = resAltJson.warehouse;
+                                    mapManager.renderLandmarks();
+                                }
+                            }
                             fleetManager.dispatchTruck(resAltJson.data);
                         } else {
                             alert(resAltJson.error || "Dispatch failed on fallback");
@@ -347,10 +377,18 @@ function initSimulator() {
         // Return fleet if it was dispatched
         if (crisis && crisis.status === 'MONITORING') {
             try {
-                await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
+                const response = await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
                 });
+                const result = await response.json();
+                if (response.ok && result.warehouse) {
+                    const index = mapManager.landmarks.findIndex(lm => lm._id === result.warehouse._id);
+                    if (index !== -1) {
+                        mapManager.landmarks[index] = result.warehouse;
+                        mapManager.renderLandmarks();
+                    }
+                }
             } catch(e) { console.error(e); }
         }
 
@@ -366,6 +404,59 @@ function initSimulator() {
                 queueManager.fetchAndRender();
             }
         } catch(e) { console.error(e); }
+    };
+
+    window.toggleRequests = async (id) => {
+        const container = document.getElementById(`requests-container-${id}`);
+        if (!container) return;
+        
+        // Toggle visibility
+        if (!container.classList.contains('hidden')) {
+            container.classList.add('hidden');
+            return;
+        }
+        
+        container.classList.remove('hidden');
+        container.innerHTML = '<div class="text-center opacity-40 text-xs font-bold py-2">Loading requests...</div>';
+        
+        try {
+            const response = await fetch(`http://localhost:5000/api/v1/requests?crisisId=${id}`, {
+                headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+            });
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<div class="flex flex-col gap-2">';
+                result.data.forEach(req => {
+                    const date = new Date(req.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    html += `
+                        <div class="bg-white/5 dark:bg-black/20 p-3 rounded flex justify-between items-center border border-white/5">
+                            <div class="flex flex-col gap-1">
+                                <span class="text-xs font-bold">${req.requesterName} <span class="opacity-50 font-normal">(${req.contactPhone})</span></span>
+                                <span class="text-[10px] uppercase tracking-widest opacity-60 flex gap-2">
+                                    <span><span class="material-symbols-outlined text-[10px]">person</span> ${req.peopleCount}</span>
+                                    <span><span class="material-symbols-outlined text-[10px]">location_on</span> ${req.locationAddress || 'Unknown'}</span>
+                                </span>
+                            </div>
+                            <div class="flex gap-2 text-xs font-bold">
+                                ${req.items.map(item => `
+                                    <div class="bg-orange-500/10 text-orange-500 px-2 py-1 rounded">
+                                        ${item.quantityNeeded} <span class="opacity-70">${item.category}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="text-center opacity-40 text-xs font-bold py-2">No citizen requests found for this incident.</div>';
+            }
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = '<div class="text-center text-statusCritical text-xs font-bold py-2">Failed to load requests.</div>';
+        }
     };
 
     const btnClearQueue = document.getElementById('btn-clear-queue');
@@ -398,14 +489,17 @@ function initSimulator() {
         });
     }
 
-    btnRandom.addEventListener('click', () => {
+    btnRandom.addEventListener('click', async () => {
         const lat = 12.8 + Math.random() * 0.3;
         const lng = 77.5 + Math.random() * 0.2;
         const severities = ['CRITICAL', 'HIGH', 'MODERATE', 'LOW'];
+        const types = ['Fire Emergency', 'Flash Flood', 'Medical Crisis', 'Structural Collapse', 'Power Outage'];
         const randomSeverity = severities[Math.floor(Math.random() * severities.length)];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const locationName = await getAddressFromCoords(lat, lng);
         
         postCrisis({
-            name: "Simulated Random Crisis",
+            name: `${type} at ${locationName}`,
             description: "Auto-generated emergency via Simulator.",
             severity: randomSeverity,
             epicenter: { type: "Point", coordinates: [lng, lat] },
@@ -418,14 +512,15 @@ function initSimulator() {
     const toggleAutoSpawner = document.getElementById('toggle-auto-spawner');
     let spawnerTimeout = null;
 
-    const spawnRandomCrisis = () => {
+    const spawnRandomCrisis = async () => {
         const lat = 12.8 + Math.random() * 0.3;
         const lng = 77.5 + Math.random() * 0.2;
         const severities = ['CRITICAL', 'HIGH', 'MODERATE', 'LOW'];
         const types = ['Fire Emergency', 'Flash Flood', 'Medical Crisis', 'Structural Collapse', 'Power Outage'];
+        const locationName = await getAddressFromCoords(lat, lng);
         
         postCrisis({
-            name: types[Math.floor(Math.random() * types.length)],
+            name: `${types[Math.floor(Math.random() * types.length)]} at ${locationName}`,
             description: "Auto-generated live simulation event.",
             severity: severities[Math.floor(Math.random() * severities.length)],
             epicenter: { type: "Point", coordinates: [lng, lat] },
@@ -477,10 +572,15 @@ function initSimulator() {
         closeMapModalIfNeeded();
     });
 
-    modalConfirm.addEventListener('click', () => {
+    modalConfirm.addEventListener('click', async () => {
         if (!currentClickCoords) return;
+        
+        const type = modalTitle.value || "Emergency";
+        const locationName = await getAddressFromCoords(currentClickCoords.lat, currentClickCoords.lng);
+        const finalName = `${type} at ${locationName}`;
+        
         postCrisis({
-            name: modalTitle.value || "Custom Crisis Zone",
+            name: finalName,
             description: "Manually declared hotzone via map click.",
             severity: modalSeverity.value || "HIGH",
             epicenter: { type: "Point", coordinates: [currentClickCoords.lng, currentClickCoords.lat] },

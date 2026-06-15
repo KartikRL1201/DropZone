@@ -12,10 +12,16 @@ export const validateRequest = (schema, source = 'body') => {
 
     if (!parseResult.success) {
       const formattedErrors = parseResult.error.format();
+      // DEBUG: Log what the client actually sent vs what failed
+      console.log('--- VALIDATION FAILED ---');
+      console.log('Raw body:', JSON.stringify(req[source], null, 2));
+      console.log('Zod issues:', JSON.stringify(parseResult.error.issues, null, 2));
+      console.log('--- END VALIDATION ---');
       // We return 400 Bad Request for validation failures
       return res.status(400).json({
         success: false,
         error: 'Validation Error',
+        issues: parseResult.error.issues,
         details: formattedErrors,
       });
     }

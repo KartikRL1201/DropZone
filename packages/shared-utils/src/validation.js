@@ -35,14 +35,14 @@ export const CreateVolunteerRequestSchema = z.object({
   contactPhone: z.string().min(10).max(20),
   contactEmail: z.string().email().optional(),
   location: GeoPointSchema,
-  locationAddress: z.string().min(5).max(250),
+  locationAddress: z.string().min(2).max(250),
   urgency: z.nativeEnum(UrgencyLevel),
   peopleCount: z.number().positive(),
   notes: z.string().max(1000).optional(),
   idempotencyKey: z.string().uuid(),
   items: z.array(z.object({
     category: z.nativeEnum(SupplyCategory),
-    description: z.string().min(3).max(100),
+    description: z.string().min(3).max(100).optional().or(z.literal('')),
     quantityNeeded: z.number().positive(),
   })).min(1).max(AppConstants.MAX_ITEMS_PER_REQUEST),
 });

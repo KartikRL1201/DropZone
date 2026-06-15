@@ -2,8 +2,12 @@ import { Warehouse } from '../models/Warehouse.model.js';
 
 export const seedWarehouses = async () => {
   try {
-    // Force clear existing warehouses to ensure schema matches during this development phase
-    await Warehouse.deleteMany({});
+    // Only seed if there are no warehouses yet (prevents resetting data on server restarts)
+    const count = await Warehouse.countDocuments();
+    if (count > 0) {
+      console.log(`⏩ Skipping warehouse seed (${count} already exist)`);
+      return;
+    }
     console.log('🌱 Seeding Warehouses...');
 
     const initialHubs = [

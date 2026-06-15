@@ -20,7 +20,7 @@ export const resupplyWarehouse = async (req, res, next) => {
             return res.status(404).json({ success: false, error: 'Warehouse not found' });
         }
 
-        // Simulate 15-second Airdrop
+        // Simulate 60-second Airdrop
         setTimeout(async () => {
             try {
                 const wh = await Warehouse.findById(id);
@@ -42,12 +42,12 @@ export const resupplyWarehouse = async (req, res, next) => {
             } catch (err) {
                 console.error('Error during airdrop resupply', err);
             }
-        }, 15000);
+        }, 60000);
 
         return res.status(202).json({
             success: true,
-            message: 'Airdrop requested. ETA: 15 seconds.',
-            estimatedArrivalSeconds: 15
+            message: 'Airdrop requested. ETA: 60 seconds.',
+            estimatedArrivalSeconds: 60
         });
 
     } catch (error) {

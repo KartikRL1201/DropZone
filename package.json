@@ -11,6 +11,7 @@
     "clients/*"
   ],
   "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:admin\" \"npm run dev:driver\" \"npm run dev:volunteer\"",
     "dev:server": "npm run dev --workspace=server",
     "dev:admin": "npm run dev --workspace=clients/admin-dashboard",
     "dev:driver": "npm run dev --workspace=clients/driver-app",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.3",
     "eslint": "^10.5.0",
     "prettier": "^3.8.4",
     "rimraf": "^6.1.3"

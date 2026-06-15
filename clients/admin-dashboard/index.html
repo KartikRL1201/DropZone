@@ -117,7 +117,7 @@
 <main class="flex-1 w-full max-w-[1600px] mx-auto px-6 md:px-12">
     
     <!-- Hero / Map Section -->
-    <section id="map-section" class="mt-8 mb-24 fade-up-element">
+    <section id="map-section" class="mt-6 mb-12 fade-up-element">
         <button id="map-close-btn" class="hidden absolute top-8 right-8 z-[1001] w-12 h-12 bg-black/50 text-white rounded-full items-center justify-center hover:bg-statusCritical transition-colors backdrop-blur-md border border-white/20">
             <span class="material-symbols-outlined text-2xl">close</span>
         </button>
@@ -153,7 +153,7 @@
     <!-- Data List Section (Replaces Table) -->
     <section class="fade-up-element">
         <!-- Tabs Header -->
-        <div class="flex flex-col md:flex-row justify-between items-end mb-12 border-b editorial-border pb-2 gap-6">
+        <div class="flex flex-col md:flex-row justify-between items-end mb-6 border-b editorial-border pb-2 gap-6">
             <div class="flex gap-8 overflow-x-auto w-full no-scrollbar">
                 <h2 id="section-title" class="text-3xl md:text-4xl font-bold tracking-tighter pb-4 text-lumenaDark dark:text-lumenaLight">Active Queue</h2>
             </div>
@@ -189,16 +189,16 @@
 
         <!-- Simulator View -->
         <div id="view-simulator" class="hidden">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <!-- Random Scenario Generator -->
-                <div class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col">
-                    <h3 class="text-xl font-bold mb-2">Random Scenario Generator</h3>
-                    <p class="text-sm opacity-60 mb-6 font-medium">Instantly trigger a simulated crisis at a random public landmark in Bengaluru. The closest warehouse will automatically dispatch a truck.</p>
-                    <button id="btn-random-crisis" class="w-full py-4 bg-statusCritical text-white font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mb-6">
+                <div class="p-6 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col">
+                    <h3 class="text-lg font-bold mb-1">Random Scenario Generator</h3>
+                    <p class="text-xs opacity-60 mb-4 font-medium">Instantly trigger a simulated crisis at a random public landmark in Bengaluru.</p>
+                    <button id="btn-random-crisis" class="w-full py-3 bg-statusCritical text-white font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mb-4">
                         <span class="material-symbols-outlined text-[16px]">shuffle</span> Generate Single Crisis
                     </button>
                     
-                    <div class="mt-auto border-t editorial-border pt-6 flex items-center justify-between">
+                    <div class="mt-auto border-t editorial-border pt-4 flex items-center justify-between">
                         <div>
                             <h4 class="font-bold text-sm">Live Auto-Spawner</h4>
                             <p class="text-[9px] font-bold tracking-widest uppercase opacity-40">Spawns every 20-40s</p>
@@ -210,26 +210,29 @@
                     </div>
                 </div>
 
-                <!-- Interactive Map Dispatch -->
-                <button id="btn-interactive-map" class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col justify-center items-center text-center hover:bg-lumenaDark/10 dark:hover:bg-lumenaLight/10 transition-colors group">
-                    <span class="material-symbols-outlined text-4xl mb-4 opacity-40 group-hover:opacity-100 transition-opacity">touch_app</span>
-                    <h3 class="text-xl font-bold mb-2">Interactive Map Dispatch</h3>
-                    <p class="text-sm opacity-60 font-medium">Launch the Fullscreen Map and click anywhere to deploy fleets to custom coordinates.</p>
-                </button>
+                <!-- Right Column -->
+                <div class="p-6 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col h-full">
+                    <!-- Interactive Map Dispatch -->
+                    <button id="btn-interactive-map" class="flex-1 mb-4 flex flex-col justify-center items-center text-center transition-opacity group hover:opacity-70">
+                        <span class="material-symbols-outlined text-3xl mb-2 opacity-40 group-hover:opacity-100 transition-opacity">touch_app</span>
+                        <h3 class="text-base font-bold mb-1">Interactive Map Dispatch</h3>
+                        <p class="text-xs opacity-60 font-medium">Launch the Fullscreen Map and click anywhere to deploy fleets to custom coordinates.</p>
+                    </button>
 
-                <!-- Speed Slider -->
-                <div class="p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-xl flex flex-col justify-center">
-                    <div class="flex items-center justify-between mb-8">
-                        <div class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-xl opacity-60">speed</span>
-                            <h3 class="text-lg font-bold">Fleet Speed</h3>
+                    <!-- Speed Slider -->
+                    <div class="mt-auto border-t editorial-border pt-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-base opacity-60">speed</span>
+                                <h3 class="text-xs font-bold uppercase tracking-widest opacity-80">Fleet Speed</h3>
+                            </div>
+                            <span id="speed-value" class="font-mono text-[10px] font-bold bg-black/10 dark:bg-white/10 px-2 py-1 rounded-full">100.0x</span>
                         </div>
-                        <span id="speed-value" class="font-mono text-sm font-bold bg-lumenaDark/10 dark:bg-lumenaLight/10 px-3 py-1 rounded-full">100.0x</span>
-                    </div>
-                    <input id="speed-slider" type="range" min="1" max="1000" value="1000" step="1" class="w-full h-2 rounded-full appearance-none cursor-pointer accent-lumenaDark dark:accent-lumenaLight bg-lumenaDark/10 dark:bg-lumenaLight/10" />
-                    <div class="flex justify-between text-[9px] font-bold tracking-widest uppercase opacity-40 mt-4">
-                        <span>Slow</span>
-                        <span>Warp</span>
+                        <input id="speed-slider" type="range" min="1" max="1000" value="1000" step="1" class="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-lumenaDark dark:accent-lumenaLight bg-black/10 dark:bg-white/10" />
+                        <div class="flex justify-between text-[9px] font-bold tracking-widest uppercase opacity-40 mt-2">
+                            <span>Slow</span>
+                            <span>Warp</span>
+                        </div>
                     </div>
                 </div>
             </div>

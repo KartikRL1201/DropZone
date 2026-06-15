@@ -34,7 +34,7 @@ export const globalRateLimiter = rateLimit({
  */
 export const strictVolunteerIntakeLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // 5 requests per hour per IP
+  max: 500, // increased for dev/testing
   standardHeaders: true,
   legacyHeaders: false,
   
