@@ -188,10 +188,10 @@ class MapManager {
 
             const latLng = [lat, lng];
             
-            let colorClass = 'bg-statusLow';
-            if (crisis.severity === 'CRITICAL') colorClass = 'bg-statusCritical';
-            else if (crisis.severity === 'HIGH') colorClass = 'bg-statusHigh';
-            else if (crisis.severity === 'MODERATE') colorClass = 'bg-statusMedium';
+            let colorClass = 'bg-accent-green shadow-[0_0_15px_rgba(25,227,156,0.6)]';
+            if (crisis.severity === 'CRITICAL') colorClass = 'bg-accent-red shadow-[0_0_15px_rgba(255,42,42,0.6)]';
+            else if (crisis.severity === 'HIGH') colorClass = 'bg-accent-orange shadow-[0_0_15px_rgba(255,92,0,0.6)]';
+            else if (crisis.severity === 'MODERATE') colorClass = 'bg-accent-purple shadow-[0_0_15px_rgba(139,92,246,0.6)]';
 
             let emoji = '⚠️';
             const nameLower = (crisis.name || '').toLowerCase();
@@ -202,8 +202,8 @@ class MapManager {
             else if (nameLower.includes('power')) emoji = '⚡';
 
             const markerHtml = `
-                <div class="relative w-8 h-8 rounded-full ${colorClass} shadow-[0_0_15px_rgba(0,0,0,0.5)] flex items-center justify-center text-sm">
-                    <div class="absolute inset-0 rounded-full border-2 border-white animate-pulse"></div>
+                <div class="relative w-8 h-8 rounded-full ${colorClass} flex items-center justify-center text-sm border border-white/20">
+                    <div class="absolute inset-0 rounded-full border border-white animate-ping opacity-50"></div>
                     ${emoji}
                 </div>`;
             const icon = L.divIcon({ className: 'custom-div-icon', html: markerHtml, iconSize: [32, 32], iconAnchor: [16, 16] });
@@ -284,7 +284,7 @@ class MapManager {
                 // Create a sleek, premium top-down truck marker
                 const iconHtml = `
                     <div class="transition-transform duration-[33ms] flex items-center justify-center w-12 h-12" style="transform: rotate(${vehicle.heading || 0}deg)">
-                        <div class="relative w-3.5 h-7 bg-lumenaDark dark:bg-lumenaLight rounded-[3px] shadow-[0_5px_15px_rgba(0,0,0,0.4)] border border-white/10">
+                        <div class="relative w-3.5 h-7 bg-white rounded-[3px] shadow-[0_5px_15px_rgba(0,0,0,0.4)] border border-white/10">
                             <!-- Windshield -->
                             <div class="absolute top-1.5 left-0.5 right-0.5 h-1.5 bg-black/40 dark:bg-black/60 rounded-sm"></div>
                             <!-- Roof Details -->

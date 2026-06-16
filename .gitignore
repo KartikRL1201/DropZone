@@ -125,3 +125,6 @@ dist
 dist
 dist-ssr
 *.local
+
+# Project Planning
+todo.md

@@ -72,11 +72,12 @@ function renderLandmarks() {
 
     landmarks.forEach(lm => {
         const isHq = lm.code === 'hq';
-        let colorClass = isHq ? 'bg-lumenaDark text-lumenaLight dark:bg-lumenaLight dark:text-lumenaDark border-white shadow-xl' : 'bg-blue-600 text-white border-blue-300 shadow-md';
+        let colorClass = isHq ? 'bg-krypton-darker text-accent-cyan dark:bg-white dark:text-krypton-darker border-accent-cyan shadow-[0_0_15px_rgba(0,240,255,0.6)]' : 'bg-accent-blue text-white border-white/50 shadow-[0_0_10px_rgba(70,114,236,0.6)]';
         let size = isHq ? 'w-10 h-10 text-[20px]' : 'w-8 h-8 text-[16px]';
         let zIndex = isHq ? 500 : 400;
         let iconHtml = `
-            <div class="flex items-center justify-center rounded-full border-[2px] ${colorClass} ${size} transition-transform hover:scale-110">
+            <div class="flex items-center justify-center rounded-full border ${colorClass} ${size} transition-transform hover:scale-110 relative">
+                ${isHq ? '<div class="absolute inset-0 border border-accent-cyan rounded-full animate-ping opacity-50"></div>' : ''}
                 <span class="material-symbols-outlined" style="font-size: inherit">${isHq ? 'warehouse' : 'inventory_2'}</span>
             </div>
         `;
@@ -100,10 +101,11 @@ function renderCrises() {
 
     activeCrises.forEach(crisis => {
         const isCritical = crisis.severity === 'CRITICAL';
-        const colorClass = isCritical ? 'bg-red-600 border-red-300 shadow-red-500/50' : 'bg-orange-500 border-orange-300 shadow-orange-500/50';
+        const colorClass = isCritical ? 'bg-accent-red border-white/20 shadow-[0_0_15px_rgba(255,42,42,0.8)]' : 'bg-accent-orange border-white/20 shadow-[0_0_15px_rgba(255,92,0,0.8)]';
         
         let iconHtml = `
-            <div class="flex items-center justify-center rounded-full border-[2px] ${colorClass} text-white w-8 h-8 transition-transform hover:scale-110 shadow-lg animate-pulse">
+            <div class="flex items-center justify-center rounded-full border ${colorClass} text-white w-8 h-8 transition-transform hover:scale-110 relative">
+                <div class="absolute inset-0 border ${isCritical ? 'border-accent-red' : 'border-accent-orange'} rounded-full animate-ping opacity-60"></div>
                 <span class="material-symbols-outlined text-[16px]">emergency</span>
             </div>
         `;
@@ -182,7 +184,7 @@ async function fetchCrises() {
         const select = document.getElementById('crisis-id');
         const currentValue = select.value;
         
-        select.innerHTML = '<option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="" disabled selected>Select an incident...</option>';
+        select.innerHTML = '<option value="" disabled selected>Select an incident...</option>';
         
         if (result.success && result.data.length > 0) {
             activeCrises = result.data;
@@ -202,7 +204,7 @@ async function fetchCrises() {
         } else {
             activeCrises = [];
             renderCrises();
-            select.innerHTML = '<option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="" disabled selected>No active crises found.</option>';
+            select.innerHTML = '<option value="" disabled selected>No active crises found.</option>';
         }
     } catch (err) {
         console.error('Failed to fetch crises:', err);
@@ -221,15 +223,15 @@ function setupItemList() {
         row.style.opacity = '1';
         
         row.innerHTML = `
-            <select class="item-category w-1/3 bg-lumenaDark/5 dark:bg-lumenaLight/5 border-none rounded-lg p-2 text-xs font-bold focus:ring-2 focus:ring-lumenaDark dark:focus:ring-lumenaLight outline-none appearance-none cursor-pointer">
-                <option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="MEDICAL">Medical</option>
-                <option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="WATER">Water</option>
-                <option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="FOOD">Food</option>
-                <option class="bg-white dark:bg-gray-800 text-black dark:text-white" value="BLANKETS">Blankets</option>
+            <select class="item-category w-1/3 bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-2 text-xs font-bold focus:ring-1 focus:ring-accent-cyan outline-none appearance-none cursor-pointer">
+                <option value="MEDICAL">Medical</option>
+                <option value="WATER">Water</option>
+                <option value="FOOD">Food</option>
+                <option value="BLANKETS">Blankets</option>
             </select>
-            <input type="number" class="item-quantity w-1/4 bg-lumenaDark/5 dark:bg-lumenaLight/5 border-none rounded-lg p-2 text-xs font-bold focus:ring-2 focus:ring-lumenaDark dark:focus:ring-lumenaLight outline-none" placeholder="Qty" min="1" required>
-            <input type="text" class="item-desc w-full bg-lumenaDark/5 dark:bg-lumenaLight/5 border-none rounded-lg p-2 text-xs font-bold focus:ring-2 focus:ring-lumenaDark dark:focus:ring-lumenaLight outline-none" placeholder="Details" required>
-            <button type="button" class="btn-remove-item p-2 opacity-40 hover:opacity-100 hover:text-statusCritical transition-all mt-0.5">
+            <input type="number" class="item-quantity w-1/4 bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-2 text-xs font-bold focus:ring-1 focus:ring-accent-cyan outline-none placeholder:opacity-40" placeholder="Qty" min="1" required>
+            <input type="text" class="item-desc w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-2 text-xs font-bold focus:ring-1 focus:ring-accent-cyan outline-none placeholder:opacity-40" placeholder="Details" required>
+            <button type="button" class="btn-remove-item p-2 opacity-40 hover:opacity-100 hover:text-accent-red transition-all mt-0.5">
                 <span class="material-symbols-outlined text-[16px]">close</span>
             </button>
         `;

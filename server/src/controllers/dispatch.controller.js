@@ -48,6 +48,13 @@ export const dispatchFleet = async (req, res, next) => {
             });
         });
 
+        // SIMULATION FALLBACK: If no volunteers requested anything but a crisis is active,
+        // auto-generate a manifest based on severity.
+        const totalRequested = Object.values(suppliesRequired).reduce((sum, val) => sum + val, 0);
+        if (totalRequested === 0) {
+            suppliesRequired = getRequiredSupplies(crisis.severity);
+        }
+
         let selectedWarehouse = null;
 
         if (warehouseId) {
@@ -140,6 +147,7 @@ export const dispatchFleet = async (req, res, next) => {
         crisis.status = CrisisStatus.MONITORING;
         crisis.dispatchStatus = 'PENDING_DRIVER';
         crisis.assignedWarehouseId = selectedWarehouse._id;
+        crisis.manifest = suppliesRequired;
         await crisis.save();
 
         const populatedCrisis = await Crisis.findById(crisis._id).populate('assignedWarehouseId');
@@ -206,7 +214,7 @@ export const acceptDispatch = async (req, res, next) => {
             crisis.name, 
             originCoords, 
             destCoords, 
-            null // manifest not stored in db yet, let's omit for now
+            crisis.manifest ? Object.fromEntries(crisis.manifest) : null
         );
 
         if (!mission) {

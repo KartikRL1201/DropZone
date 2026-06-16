@@ -75,6 +75,11 @@ const crisisSchema = new mongoose.Schema(
       enum: ['NONE', 'PENDING_DRIVER', 'IN_TRANSIT', 'RETURNING'],
       default: 'NONE',
     },
+    manifest: {
+      type: Map,
+      of: Number,
+      default: null,
+    },
     returnRoute: {
       type: [[Number]],
       default: null,

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,7 +10,7 @@
     
     <!-- Google Fonts & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@300..800&display=swap" rel="stylesheet"/>
     
     <!-- Leaflet CSS -->
     <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
@@ -21,14 +21,28 @@
             darkMode: "class",
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    fontFamily: { 
+                        sans: ['Inter', 'sans-serif'],
+                        geist: ['Geist', 'sans-serif']
+                    },
                     colors: {
-                        lumenaLight: '#F7F5EE', // Warm creamy beige
-                        lumenaDark: '#0A2522',  // Deep forest green
-                        statusCritical: '#FF3B30',
-                        statusHigh: '#FF9500',
-                        statusMedium: '#FFCC00',
-                        statusLow: '#34C759'
+                        krypton: {
+                            dark: '#050505',
+                            darker: '#000000',
+                            panel: '#0a0a0a',
+                            border: '#1f1f1f',
+                            light: '#ffffff',
+                            lightPanel: '#f2f2f2',
+                            lightBorder: '#e5e5e5',
+                        },
+                        accent: {
+                            cyan: '#00f0ff',
+                            blue: '#4672ec',
+                            purple: '#8b5cf6',
+                            orange: '#ff5c00',
+                            green: '#19e39c',
+                            red: '#ff2a2a'
+                        }
                     }
                 }
             }
@@ -46,11 +60,29 @@
         }
     </script>
     
-    <!-- Editorial Refinements -->
+    <!-- Neo-Krypton Base Styles -->
     <style>
-        html { transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.4s ease; scroll-behavior: smooth; }
-        .editorial-border { border-color: rgba(10, 37, 34, 0.1); }
-        .dark .editorial-border { border-color: rgba(247, 245, 238, 0.1); }
+        html { scroll-behavior: smooth; }
+        body { transition: background-color 0.4s ease, color 0.4s ease; }
+        
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .dark .glass-panel {
+            background: rgba(10, 10, 10, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .glow-text-cyan { text-shadow: 0 0 12px rgba(0, 240, 255, 0.5); }
+        .glow-text-orange { text-shadow: 0 0 12px rgba(255, 92, 0, 0.5); }
+        .glow-text-red { text-shadow: 0 0 12px rgba(255, 42, 42, 0.5); }
         
         .fade-up-element {
             opacity: 0;
@@ -61,130 +93,142 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
-        #map { z-index: 1; }
+        #map { z-index: 1; transition: opacity 0.4s ease; }
         
         /* Hide scrollbar for Chrome, Safari and Opera */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
-        /* Hide scrollbar for IE, Edge and Firefox */
-        .no-scrollbar {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
-        }
+        /* Custom Scrollbar (Same as Admin Dashboard) */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+        html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
     </style>
 </head>
-<body class="bg-lumenaLight dark:bg-lumenaDark text-lumenaDark dark:text-lumenaLight font-sans antialiased min-h-screen flex flex-col selection:bg-lumenaDark selection:text-lumenaLight dark:selection:bg-lumenaLight dark:selection:text-lumenaDark overflow-hidden no-scrollbar">
+<body class="bg-krypton-lightPanel dark:bg-krypton-darker text-krypton-darker dark:text-krypton-light font-sans antialiased h-screen w-screen flex flex-col selection:bg-accent-cyan selection:text-krypton-darker overflow-hidden">
 
     <!-- Screen 1: Login -->
-    <div id="login-screen" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-lumenaLight dark:bg-lumenaDark z-50 transition-opacity duration-300">
-        <div class="w-full max-w-sm p-8 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-3xl text-center fade-up-element backdrop-blur-md">
-            <span class="material-symbols-outlined text-6xl text-statusHigh mb-4">local_shipping</span>
-            <h1 class="text-3xl font-bold tracking-tighter mb-2">DROPZONE <span class="opacity-50">DRIVER</span></h1>
-            <p class="text-xs font-bold tracking-widest uppercase opacity-60 mb-8">Secure Dispatch Uplink</p>
+    <div id="login-screen" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-krypton-lightPanel dark:bg-krypton-darker z-50 transition-opacity duration-300">
+        <div class="w-full max-w-2xl p-8 border border-krypton-border bg-white dark:bg-krypton-panel rounded-3xl text-center fade-up-element shadow-2xl relative overflow-hidden">
+            <!-- decorative glow -->
+            <div class="absolute -top-20 -left-20 w-40 h-40 bg-accent-orange opacity-20 rounded-full blur-[50px] pointer-events-none"></div>
             
-            <form id="login-form" class="space-y-4 text-left">
-                <div>
-                    <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Driver Authorization Code</label>
-                    <input type="text" id="driver-id" placeholder="e.g. DRV-101" required autocomplete="off" class="w-full bg-lumenaDark/10 dark:bg-lumenaLight/10 border-none rounded-xl p-4 text-sm font-bold focus:ring-2 focus:ring-lumenaDark dark:focus:ring-lumenaLight outline-none text-center tracking-widest uppercase mb-4">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Assigned Warehouse</label>
-                    <div id="warehouse-list" class="max-h-56 overflow-y-auto no-scrollbar space-y-2 rounded-xl border editorial-border p-2 bg-lumenaDark/5 dark:bg-lumenaLight/5">
+            <span class="material-symbols-outlined text-6xl text-accent-orange mb-4 dark:glow-text-orange">local_shipping</span>
+            <h1 class="text-3xl font-geist font-bold tracking-tighter mb-2 text-krypton-darker dark:text-white">DROPZONE <span class="opacity-40">DRIVER</span></h1>
+            <p class="text-xs font-bold tracking-widest uppercase opacity-60 mb-8 text-accent-orange">Secure Dispatch Uplink</p>
+            
+            <form id="login-form" class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left relative z-10">
+                <!-- Left Column: Assigned Node -->
+                <div class="flex flex-col h-full">
+                    <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Assigned Node</label>
+                    <div id="warehouse-list" class="h-48 overflow-y-auto custom-scrollbar space-y-2 rounded-xl border border-krypton-border p-2 bg-black/5 dark:bg-black/40">
                         <div class="text-center p-4 text-xs font-bold opacity-50 uppercase">Connecting to HQ...</div>
                     </div>
-                    <!-- Hidden input to store selected warehouse ID -->
+                    <!-- Hidden inputs -->
                     <input type="hidden" id="warehouse-id" required>
-                    <!-- Hidden input to store selected warehouse CODE for validation -->
                     <input type="hidden" id="warehouse-code">
                 </div>
-                <button type="submit" id="btn-login" disabled class="w-full py-4 bg-statusHigh text-white font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity flex justify-center items-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
-                </button>
+
+                <!-- Right Column: Driver ID & Button -->
+                <div class="flex flex-col h-full">
+                    <div>
+                        <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Driver Auth Code</label>
+                        <input type="text" id="driver-id" placeholder="e.g. DRV-101" required autocomplete="off" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-xl p-4 text-sm font-bold focus:ring-1 focus:ring-accent-orange focus:border-accent-orange outline-none text-center tracking-widest uppercase transition-all">
+                    </div>
+                    <div class="flex-1 min-h-[16px]"></div>
+                    <button type="submit" id="btn-login" disabled class="w-full py-4 bg-accent-orange text-white dark:text-black font-bold tracking-widest text-[10px] uppercase rounded-full hover:bg-orange-500 transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-30 disabled:cursor-not-allowed dark:shadow-[0_0_15px_rgba(255,92,0,0.4)]">
+                        Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Main App Container -->
-    <div id="app-screen" class="hidden flex-col h-screen">
+    <div id="app-screen" class="hidden flex-col h-screen relative">
         
-        <!-- Header -->
-        <header class="w-full px-6 py-6 flex justify-between items-center z-50 border-b editorial-border bg-lumenaLight/80 dark:bg-lumenaDark/80 backdrop-blur-md sticky top-0">
-            <div class="flex items-center gap-3 font-bold tracking-tighter">
-                <span class="material-symbols-outlined text-statusHigh">local_shipping</span>
-                <span id="display-driver-id" class="tracking-widest uppercase">DRV-###</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <!-- Status Indicator -->
-                <div id="connection-status" class="flex items-center gap-2 bg-statusLow/10 text-statusLow px-3 py-1.5 rounded-full border border-statusLow/20">
-                    <span class="w-2 h-2 rounded-full bg-statusLow animate-pulse dot"></span>
-                    <span class="text-[9px] font-bold tracking-widest uppercase status-text">Online</span>
+        <!-- Header (Floating Glass) -->
+        <header class="absolute top-0 left-0 right-0 px-4 py-4 z-[1001]">
+            <div class="glass-panel flex justify-between items-center rounded-2xl px-5 py-4 border border-krypton-border shadow-lg">
+                <div class="flex items-center gap-3 font-geist font-bold tracking-tighter text-lg dark:text-white">
+                    <span class="material-symbols-outlined text-accent-cyan dark:glow-text-cyan">local_shipping</span>
+                    <span id="display-driver-id" class="tracking-[0.2em] uppercase">DRV-###</span>
                 </div>
-                <!-- Theme Toggle -->
-                <button id="theme-toggle" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full hover:bg-lumenaDark/5 dark:hover:bg-lumenaLight/5" title="Toggle Mode">
-                    <span class="material-symbols-outlined text-[18px] dark:hidden block">dark_mode</span>
-                    <span class="material-symbols-outlined text-[18px] hidden dark:block">light_mode</span>
-                </button>
-                <!-- Logout Button -->
-                <button id="btn-logout" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full hover:bg-statusCritical/10 hover:text-statusCritical" title="Logout">
-                    <span class="material-symbols-outlined text-[18px]">logout</span>
-                </button>
+                <div class="flex items-center gap-4">
+                    <!-- Status Indicator -->
+                    <div id="connection-status" class="flex items-center gap-2 bg-accent-green/10 text-accent-green px-3 py-1.5 rounded-full border border-accent-green/20">
+                        <span class="w-2 h-2 rounded-full bg-accent-green animate-pulse dot dark:shadow-[0_0_8px_rgba(25,227,156,0.8)]"></span>
+                        <span class="text-[9px] font-bold tracking-widest uppercase status-text">Online</span>
+                    </div>
+                    <!-- Theme Toggle -->
+                    <button id="theme-toggle" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10" title="Toggle Mode">
+                        <span class="material-symbols-outlined text-[18px] dark:hidden block">dark_mode</span>
+                        <span class="material-symbols-outlined text-[18px] hidden dark:block text-accent-cyan glow-text-cyan">light_mode</span>
+                    </button>
+                    <!-- Logout Button -->
+                    <button id="btn-logout" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent-red/10 hover:text-accent-red" title="Logout">
+                        <span class="material-symbols-outlined text-[18px]">logout</span>
+                    </button>
+                </div>
             </div>
         </header>
 
         <!-- View 1: Idle / Waiting for Route -->
-        <div id="idle-view" class="flex-1 flex flex-col items-center justify-center p-6 text-center fade-up-element">
-            <div class="w-24 h-24 rounded-full border border-statusHigh/30 flex justify-center items-center mb-8 relative">
-                <div class="absolute inset-0 border-2 border-statusHigh rounded-full animate-ping opacity-20"></div>
-                <span class="material-symbols-outlined text-5xl text-statusHigh">radar</span>
+        <div id="idle-view" class="flex-1 flex flex-col items-center justify-center p-6 text-center fade-up-element z-10">
+            <div class="w-24 h-24 rounded-full border border-accent-blue/30 flex justify-center items-center mb-8 relative">
+                <div class="absolute inset-0 border border-accent-blue rounded-full animate-ping opacity-40"></div>
+                <span class="material-symbols-outlined text-5xl text-accent-blue dark:glow-text-cyan">radar</span>
             </div>
-            <h2 class="text-3xl font-bold tracking-tighter mb-2">Awaiting Dispatch</h2>
-            <p class="text-sm opacity-60 font-medium max-w-xs">No active routes assigned. Stay on standby for emergency routing.</p>
+            <h2 class="text-3xl font-geist font-bold tracking-tighter mb-2 dark:text-white">Awaiting Dispatch</h2>
+            <p class="text-sm opacity-60 font-medium max-w-xs font-inter">No active routes assigned. Stay on standby for emergency routing.</p>
         </div>
 
         <!-- View 2: Active Route -->
-        <div id="route-view" class="hidden flex-1 flex-col relative">
-            <!-- Map Container -->
-            <div class="flex-1 relative">
+        <div id="route-view" class="hidden absolute inset-0 flex-col z-0">
+            <!-- Edge-to-Edge Map Container -->
+            <div class="absolute inset-0 z-0">
                 <div id="map" class="w-full h-full"></div>
-                <!-- GPS Simulator Toggle -->
-                <div class="absolute top-4 right-4 z-[400] bg-lumenaLight dark:bg-lumenaDark p-3 rounded-xl border editorial-border shadow-lg flex items-center gap-3 backdrop-blur-md">
+                <!-- GPS Simulator Toggle (Floating Bottom Right, above bottom sheet) -->
+                <div class="absolute top-24 right-4 z-[400] glass-panel p-3 rounded-xl border border-krypton-border shadow-lg flex items-center gap-3">
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" id="sim-toggle" checked class="sr-only peer">
-                        <div class="w-9 h-5 bg-lumenaDark/20 dark:bg-lumenaLight/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-statusHigh"></div>
+                        <div class="w-9 h-5 bg-black/20 dark:bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent-orange dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]"></div>
                     </label>
                     <span class="text-[9px] font-bold tracking-widest uppercase opacity-60">Sim GPS</span>
                 </div>
             </div>
 
             <!-- Mission Bottom Sheet -->
-            <div class="bg-lumenaLight dark:bg-lumenaDark border-t editorial-border rounded-t-3xl px-3 py-3 pb-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-50">
-                <div class="w-12 h-1 bg-lumenaDark/10 dark:bg-lumenaLight/10 rounded-full mx-auto mb-2"></div>
+            <div class="absolute bottom-0 left-0 right-0 glass-panel border-t border-white/10 rounded-t-3xl px-4 py-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-20px_50px_rgba(0,0,0,0.8)] z-[1001] fade-up-element">
+                <div class="w-12 h-1 bg-black/20 dark:bg-white/20 rounded-full mx-auto mb-4"></div>
                 
-                <div class="flex justify-between items-start mb-3">
+                <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h3 id="dest-name" class="text-xl font-bold tracking-tighter mb-1">Crisis Center</h3>
-                        <p id="dest-distance" class="text-[10px] font-bold tracking-widest uppercase opacity-60">Calculating distance...</p>
+                        <h3 id="dest-name" class="text-2xl font-geist font-bold tracking-tighter mb-1 dark:text-white">Crisis Center</h3>
+                        <p id="dest-distance" class="text-[10px] font-bold tracking-widest uppercase opacity-60 text-accent-cyan">Calculating distance...</p>
                     </div>
-                    <div class="flex flex-col items-center bg-statusCritical/10 text-statusCritical px-2 py-1.5 rounded-xl border border-statusCritical/20">
+                    <div class="flex flex-col items-center bg-accent-orange/10 text-accent-orange px-3 py-2 rounded-xl border border-accent-orange/20 dark:shadow-[0_0_15px_rgba(255,92,0,0.2)]">
                         <span class="material-symbols-outlined text-[16px]">timer</span>
-                        <span id="eta-time" class="font-bold text-xs">--:--</span>
+                        <span id="eta-time" class="font-bold text-sm tracking-tight">--:--</span>
                     </div>
                 </div>
 
-                <div class="mb-3 flex gap-2 items-center">
-                    <h4 class="text-[9px] font-bold tracking-widest uppercase opacity-40">Manifest:</h4>
+                <div class="mb-5 flex gap-3 items-center">
+                    <h4 class="text-[9px] font-bold tracking-widest uppercase opacity-40">Manifest</h4>
+                    <div class="w-px h-4 bg-krypton-border"></div>
                     <div id="cargo-list" class="flex gap-2 items-center flex-wrap">
                         <!-- Populated via JS -->
                     </div>
                 </div>
 
                 <div class="action-section">
-                    <button id="btn-start-route" class="w-full py-4 bg-statusHigh text-white font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity flex justify-center items-center gap-2">
+                    <button id="btn-start-route" class="w-full py-4 bg-accent-cyan text-krypton-darker font-bold tracking-widest text-[10px] uppercase rounded-xl hover:bg-cyan-400 transition-all flex justify-center items-center gap-2 dark:shadow-[0_0_20px_rgba(0,240,255,0.4)]">
                         <span class="material-symbols-outlined text-[18px]">navigation</span> Start Engine
                     </button>
                     
-                    <button id="btn-unload" class="hidden w-full py-4 bg-statusLow text-white font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity flex justify-center items-center gap-2">
+                    <button id="btn-unload" class="hidden w-full py-4 bg-accent-green text-krypton-darker font-bold tracking-widest text-[10px] uppercase rounded-xl hover:bg-green-400 transition-all flex justify-center items-center gap-2 dark:shadow-[0_0_20px_rgba(25,227,156,0.4)]">
                         <span class="material-symbols-outlined text-[18px]">check_circle</span> Unload Entire Fleet
                     </button>
                 </div>
@@ -193,26 +237,26 @@
     </div>
 
     <!-- Accept Mission Modal (Hidden by default) -->
-    <div id="accept-mission-modal" class="hidden absolute inset-0 bg-lumenaDark/90 backdrop-blur-md z-[1000] flex-col items-center justify-center p-6 text-center">
-        <div class="w-full max-w-sm p-8 border border-statusCritical/30 bg-lumenaDark rounded-3xl shadow-2xl relative overflow-hidden">
-            <div class="absolute inset-0 bg-statusCritical/10 animate-pulse pointer-events-none"></div>
+    <div id="accept-mission-modal" class="hidden absolute inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-[2000] flex-col items-center justify-center p-6 text-center">
+        <div class="w-full max-w-sm p-8 border border-accent-red/30 bg-white dark:bg-krypton-panel rounded-3xl shadow-[0_0_50px_rgba(255,42,42,0.15)] relative overflow-hidden fade-up-element" style="animation-delay: 0s;">
+            <div class="absolute inset-0 bg-accent-red/5 animate-pulse pointer-events-none"></div>
             
-            <div class="w-20 h-20 bg-statusCritical/20 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                <div class="absolute inset-0 border-4 border-statusCritical rounded-full animate-ping opacity-30"></div>
-                <span class="material-symbols-outlined text-statusCritical text-4xl">warning</span>
+            <div class="w-20 h-20 bg-accent-red/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                <div class="absolute inset-0 border border-accent-red rounded-full animate-ping opacity-50"></div>
+                <span class="material-symbols-outlined text-accent-red text-4xl dark:glow-text-red">warning</span>
             </div>
             
-            <h2 class="text-2xl font-bold tracking-tighter mb-2 text-lumenaLight">EMERGENCY DISPATCH</h2>
-            <p id="modal-crisis-name" class="text-sm font-bold opacity-80 mb-6 text-statusCritical uppercase tracking-widest">Awaiting Location Details</p>
+            <h2 class="text-2xl font-geist font-bold tracking-tighter mb-2 dark:text-white">EMERGENCY DISPATCH</h2>
+            <p id="modal-crisis-name" class="text-sm font-bold opacity-90 mb-6 text-accent-red uppercase tracking-widest">Awaiting Location Details</p>
             
-            <div class="bg-lumenaLight/5 p-4 rounded-xl mb-8 border border-lumenaLight/10 text-left text-lumenaLight">
-                <p class="text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Manifest Summary</p>
-                <div id="modal-manifest-preview" class="flex flex-wrap gap-2 text-xs font-medium opacity-90">
+            <div class="bg-black/5 dark:bg-black/40 p-4 rounded-xl mb-8 border border-krypton-border text-left">
+                <p class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-3">Manifest Payload</p>
+                <div id="modal-manifest-preview" class="flex flex-wrap gap-2 text-xs font-medium">
                     <!-- Dynamic -->
                 </div>
             </div>
 
-            <button id="btn-accept-mission" class="w-full py-4 bg-statusCritical text-white font-bold tracking-widest text-xs uppercase rounded-full hover:opacity-80 transition-opacity flex justify-center items-center gap-2 relative z-10 shadow-[0_0_20px_rgba(255,59,48,0.4)]">
+            <button id="btn-accept-mission" class="w-full py-4 bg-accent-red text-white font-bold tracking-widest text-[10px] uppercase rounded-xl hover:bg-red-600 transition-all flex justify-center items-center gap-2 relative z-10 shadow-[0_0_20px_rgba(255,42,42,0.4)]">
                 ACCEPT MISSION <span class="material-symbols-outlined text-[18px]">check_circle</span>
             </button>
         </div>

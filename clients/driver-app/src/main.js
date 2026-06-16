@@ -177,8 +177,8 @@ async function updateWarehouseDropdown() {
             json.data.forEach(wh => {
                 const emergencies = pendingByWarehouse[wh._id] || 0;
                 const emergencyBadge = emergencies > 0 
-                    ? `<span class="bg-statusCritical text-white text-[9px] px-2 py-0.5 rounded-full animate-pulse">${emergencies}🚨</span>` 
-                    : `<span class="bg-lumenaDark/10 dark:bg-lumenaLight/10 text-[9px] px-2 py-0.5 rounded-full opacity-60">STANDBY</span>`;
+                    ? `<span class="bg-accent-red shadow-[0_0_8px_rgba(255,42,42,0.6)] text-white text-[9px] px-2 py-0.5 rounded-full animate-pulse">${emergencies}🚨</span>` 
+                    : `<span class="bg-black/10 dark:bg-white/10 text-[9px] px-2 py-0.5 rounded-full opacity-60">STANDBY</span>`;
                 
                 const isSelected = currentValue === wh._id;
                 const borderClass = isSelected ? 'border-statusHigh ring-1 ring-statusHigh' : 'border-transparent';
@@ -295,12 +295,12 @@ function resetDashboard() {
 function updateConnectionStatus(status) {
     const dot = connectionStatus.querySelector('.dot');
     if (status === 'connected') {
-        connectionStatus.className = 'flex items-center gap-2 bg-statusLow/10 text-statusLow px-3 py-1.5 rounded-full border border-statusLow/20';
-        dot.className = 'w-2 h-2 rounded-full bg-statusLow animate-pulse dot';
+        connectionStatus.className = 'flex items-center gap-2 bg-accent-green/10 text-accent-green px-3 py-1.5 rounded-full border border-accent-green/20';
+        dot.className = 'w-2 h-2 rounded-full bg-accent-green animate-pulse dot dark:shadow-[0_0_8px_rgba(25,227,156,0.8)]';
         statusText.textContent = 'Online';
     } else {
-        connectionStatus.className = 'flex items-center gap-2 bg-statusCritical/10 text-statusCritical px-3 py-1.5 rounded-full border border-statusCritical/20';
-        dot.className = 'w-2 h-2 rounded-full bg-statusCritical dot';
+        connectionStatus.className = 'flex items-center gap-2 bg-accent-red/10 text-accent-red px-3 py-1.5 rounded-full border border-accent-red/20';
+        dot.className = 'w-2 h-2 rounded-full bg-accent-red dot dark:shadow-[0_0_8px_rgba(255,42,42,0.8)]';
         statusText.textContent = 'Offline';
     }
 }
@@ -364,7 +364,7 @@ function setupMissionUI(mission) {
         cargoList.innerHTML = '';
         if (mission.manifest) {
             Object.entries(mission.manifest).forEach(([cat, qty]) => {
-                if (qty > 0) cargoList.innerHTML += `<div class="bg-lumenaDark border border-lumenaLight/20 px-2 py-1 rounded-md text-[10px]">${qty} ${cat}</div>`;
+                if (qty > 0) cargoList.innerHTML += `<div class="bg-white/10 dark:bg-black/40 border border-krypton-border px-2 py-1 rounded-md text-[10px] text-krypton-darker dark:text-white font-bold">${qty} ${cat}</div>`;
             });
         } else {
             cargoList.innerHTML = '<p class="text-sm opacity-60 col-span-2">No Manifest</p>';
@@ -441,7 +441,7 @@ function initMap(startCoords, endCoords, routePath) {
 
     const destIcon = L.divIcon({
         className: 'custom-div-icon',
-        html: `<div style="background-color:#FF3B30; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 0 15px rgba(255,59,48,0.8);"></div>`,
+        html: `<div style="background-color:#ff2a2a; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow: 0 0 15px rgba(255,42,42,0.8);"></div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12]
     });
@@ -449,14 +449,15 @@ function initMap(startCoords, endCoords, routePath) {
 
     const truckIcon = L.divIcon({
         className: 'custom-div-icon',
-        html: `<div style="background-color:#FF9500; width:28px; height:28px; border-radius:50%; border:3px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 15px rgba(255,149,0,0.8);"><span class="material-symbols-outlined" style="color:white; font-size:16px;">local_shipping</span></div>`,
+        html: `<div style="background-color:#ff5c00; width:28px; height:28px; border-radius:50%; border:3px solid white; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 15px rgba(255,92,0,0.8);"><span class="material-symbols-outlined" style="color:white; font-size:16px;">local_shipping</span></div>`,
         iconSize: [28, 28],
         iconAnchor: [14, 14]
     });
     truckMarker = L.marker(startCoords, { icon: truckIcon }).addTo(map);
 
     if (routePath && routePath.length > 0) {
-        routePolyline = L.polyline(routePath, { color: '#8b5cf6', weight: 5, opacity: 0.8 }).addTo(map);
+        const routeColor = currentMission && currentMission.isReturning ? '#10B981' : '#8b5cf6';
+        routePolyline = L.polyline(routePath, { color: routeColor, weight: 5, opacity: 0.8 }).addTo(map);
     }
     
     map.fitBounds(L.latLngBounds([startCoords, endCoords]), { padding: [50, 50] });
@@ -479,7 +480,7 @@ function handleDispatchRequested(data) {
     if (data.manifest) {
         Object.entries(data.manifest).forEach(([cat, qty]) => {
             if (qty > 0) {
-                modalManifestPreview.innerHTML += `<span class="bg-lumenaDark border border-lumenaLight/20 px-2 py-1 rounded-md text-[10px]">${qty} ${cat}</span>`;
+                modalManifestPreview.innerHTML += `<span class="bg-white/10 dark:bg-white/5 border border-krypton-border text-krypton-darker dark:text-white px-2 py-1 rounded-md text-[10px]">${qty} ${cat}</span>`;
             }
         });
     }

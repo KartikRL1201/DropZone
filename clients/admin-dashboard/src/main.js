@@ -101,13 +101,7 @@ socketManager.on('driver:position', (data) => {
     }
 });
 
-socketManager.on('driver:returning', (data) => {
-    if (data.route) {
-        import('./fleetManager.js').then(({ fleetManager }) => {
-            fleetManager.handleReturnRoute(data.driverId, data.crisisId, data.route);
-        });
-    }
-});
+
 
 socketManager.on('dispatch:accepted', (data) => {
     console.log('Driver Accepted Dispatch!', data);
@@ -156,6 +150,7 @@ function initTabs() {
     const navQueue = document.getElementById('nav-queue');
     const navInventory = document.getElementById('nav-inventory');
     const navSimulator = document.getElementById('nav-simulator');
+    const navMap = document.getElementById('nav-map');
     const viewQueue = document.getElementById('view-queue');
     const viewInventory = document.getElementById('view-inventory');
     const viewSimulator = document.getElementById('view-simulator');
@@ -175,7 +170,7 @@ function initTabs() {
 
     const switchTab = (activeNav, activeView, titleText) => {
         // Reset all navs
-        [navQueue, navInventory, navSimulator].forEach(nav => {
+        [navQueue, navInventory, navSimulator, navMap].forEach(nav => {
             if(!nav) return;
             nav.classList.remove('opacity-100');
         });
@@ -187,19 +182,22 @@ function initTabs() {
 
         // Activate selected nav
         activeNav.classList.add('opacity-100');
-        activeView.classList.remove('hidden');
+        if (activeView) activeView.classList.remove('hidden');
 
         updateSlider(activeNav);
+        
+        // Handle Map Only Mode
+        if (activeNav === navMap) {
+            document.body.classList.add('map-only-mode');
+        } else {
+            document.body.classList.remove('map-only-mode');
+        }
 
-        // Map section only for queue
+        // Invalidate map size to ensure it renders correctly after tab switches
         if(mapSection) {
-            if(activeView === viewQueue) {
-                mapSection.classList.remove('hidden');
-                setTimeout(() => {
-                    if (mapManager.map) mapManager.map.invalidateSize();
-                }, 100);
-            }
-            else mapSection.classList.add('hidden');
+            setTimeout(() => {
+                if (mapManager.map) mapManager.map.invalidateSize();
+            }, 100);
         }
 
         // Update section title
@@ -227,6 +225,7 @@ function initTabs() {
     navQueue.addEventListener('click', () => switchTab(navQueue, viewQueue, 'Active Queue'));
     if(navInventory) navInventory.addEventListener('click', () => switchTab(navInventory, viewInventory, 'Inventory Status'));
     if(navSimulator) navSimulator.addEventListener('click', () => switchTab(navSimulator, viewSimulator, 'Simulation Engine'));
+    if(navMap) navMap.addEventListener('click', () => switchTab(navMap, null, 'Operational Map'));
 }
 
 function initSimulator() {
@@ -245,30 +244,35 @@ function initSimulator() {
     const mapSection = document.getElementById('map-section');
     const viewQueue = document.getElementById('view-queue');
 
+    let currentClickCoords = null;
+
     if (btnInteractiveMap) {
         btnInteractiveMap.addEventListener('click', () => {
-            mapSection.classList.remove('hidden');
-            mapSection.classList.add('map-modal-mode');
+            document.body.classList.add('interactive-mode');
+            document.body.classList.add('map-only-mode');
             setTimeout(() => {
                 if (mapManager.map) mapManager.map.invalidateSize();
             }, 100);
+            
+            mapManager.enableInteractiveMode((lat, lng) => {
+                currentClickCoords = { lat, lng };
+                modalCoords.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                modal.classList.remove('hidden');
+                document.body.classList.remove('map-only-mode');
+            });
         });
     }
 
     if (btnMapClose) {
         btnMapClose.addEventListener('click', () => {
-            mapSection.classList.remove('map-modal-mode');
-            // If we are not on the Queue tab, hide the map section again
-            if (viewQueue && viewQueue.classList.contains('hidden')) {
-                mapSection.classList.add('hidden');
-            }
+            document.body.classList.remove('interactive-mode');
+            document.body.classList.remove('map-only-mode');
+            mapManager.disableInteractiveMode();
             setTimeout(() => {
                 if (mapManager.map) mapManager.map.invalidateSize();
             }, 100);
         });
     }
-
-    let currentClickCoords = null;
 
     const getAddressFromCoords = async (lat, lng) => {
         try {
@@ -590,15 +594,12 @@ function initSimulator() {
     });
 
     const closeMapModalIfNeeded = () => {
-        if (mapSection && mapSection.classList.contains('map-modal-mode')) {
-            mapSection.classList.remove('map-modal-mode');
-            if (document.getElementById('view-simulator') && !document.getElementById('view-simulator').classList.contains('hidden')) {
-                mapSection.classList.add('hidden');
-            }
-            setTimeout(() => {
-                if (mapManager.map) mapManager.map.invalidateSize();
-            }, 100);
-        }
+        document.body.classList.remove('interactive-mode');
+        document.body.classList.remove('map-only-mode');
+        mapManager.disableInteractiveMode();
+        setTimeout(() => {
+            if (mapManager.map) mapManager.map.invalidateSize();
+        }, 100);
     };
 
     modalCancel.addEventListener('click', () => {
