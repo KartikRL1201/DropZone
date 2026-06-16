@@ -141,7 +141,7 @@ class MapManager {
         });
     }
 
-    renderRoute(routeId, polylineCoords) {
+    renderRoute(routeId, polylineCoords, isReturning = false) {
         if (!this.map) return;
         
         // Remove existing route if any
@@ -149,9 +149,10 @@ class MapManager {
             this.map.removeLayer(this.routeLayers[routeId]);
         }
 
-        // Draw Zepto-style thick purple line
+        // Draw Zepto-style thick purple line, or green for returning
+        const routeColor = isReturning ? '#10B981' : '#8B3DFF'; // Emerald 500 or Vibrant Purple
         const routeLine = L.polyline(polylineCoords, {
-            color: '#8B3DFF', // Vibrant Purple
+            color: routeColor,
             weight: 5,
             opacity: 0.8,
             lineJoin: 'round'

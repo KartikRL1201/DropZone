@@ -1,4 +1,5 @@
-import http from 'http';
+import http from 'http';  
+import express from 'express';  
 import app from './app.js';
 import { env } from './config/env.config.js';
 import { connectDB } from './config/db.config.js';
@@ -21,7 +22,7 @@ const startServer = async () => {
     
     // 2. Initialize Real-Time WebSockets
     initSocket(server);
-    console.log('✅ WebSockets (Socket.IO) Initialized');
+    console.log('✅ WebSockets (Socket.IO) Initialized.');
 
     // 3. Initialize Background Workers
     initWorker();

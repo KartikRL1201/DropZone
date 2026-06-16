@@ -66,6 +66,19 @@ const crisisSchema = new mongoose.Schema(
       ref: 'Warehouse',
       default: null,
     },
+    assignedDriverId: {
+      type: String,
+      default: null,
+    },
+    dispatchStatus: {
+      type: String,
+      enum: ['NONE', 'PENDING_DRIVER', 'IN_TRANSIT', 'RETURNING'],
+      default: 'NONE',
+    },
+    returnRoute: {
+      type: [[Number]],
+      default: null,
+    },
     tags: [
       {
         type: String,

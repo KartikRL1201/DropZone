@@ -36,9 +36,15 @@ class SocketManager {
         });
 
         // Listen for specific events
-        this.socket.on('driver:position', (data) => this._notify('driver:position', data));
+        this.socket.on('fleet:telemetry', (data) => this._notify('fleet:telemetry', data));
+        this.socket.on('fleet:active_missions', (data) => this._notify('fleet:active_missions', data));
+        this.socket.on('fleet:new_mission', (data) => this._notify('fleet:new_mission', data));
+        this.socket.on('dispatch:accepted', (data) => this._notify('dispatch:accepted', data));
+        this.socket.on('mission:completed', (data) => this._notify('mission:completed', data));
+        this.socket.on('driver:returning', (data) => this._notify('driver:returning', data));
         this.socket.on('crisis:new', (data) => this._notify('crisis:new', data));
         this.socket.on('crisis:updated', (data) => this._notify('crisis:updated', data));
+        this.socket.on('crisis:deleted', (data) => this._notify('crisis:deleted', data));
         this.socket.on('warehouse:updated', (data) => this._notify('warehouse:updated', data));
     }
 

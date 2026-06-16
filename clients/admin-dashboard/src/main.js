@@ -75,6 +75,14 @@ socketManager.on('crisis:updated', (data) => {
     queueManager.fetchAndRender();
 });
 
+socketManager.on('crisis:deleted', (crisisId) => {
+    console.log('Crisis deleted:', crisisId);
+    import('./fleetManager.js').then(({ fleetManager }) => {
+        fleetManager.removeTruckForCrisis(crisisId);
+    });
+    queueManager.fetchAndRender();
+});
+
 socketManager.on('warehouse:updated', (data) => {
     console.log('Warehouse updated, redrawing map markers...', data);
     const index = mapManager.landmarks.findIndex(lm => lm._id === data._id);
@@ -82,6 +90,40 @@ socketManager.on('warehouse:updated', (data) => {
         mapManager.landmarks[index] = data;
         mapManager.renderLandmarks();
     }
+});
+
+// Telemetry Listener
+socketManager.on('driver:position', (data) => {
+    if (data.location) {
+        import('./fleetManager.js').then(({ fleetManager }) => {
+            fleetManager.updateTelemetry(data.driverId, data.location.lat, data.location.lng);
+        });
+    }
+});
+
+socketManager.on('driver:returning', (data) => {
+    if (data.route) {
+        import('./fleetManager.js').then(({ fleetManager }) => {
+            fleetManager.handleReturnRoute(data.driverId, data.crisisId, data.route);
+        });
+    }
+});
+
+socketManager.on('dispatch:accepted', (data) => {
+    console.log('Driver Accepted Dispatch!', data);
+    showNotification('Driver Deployed', `Truck En Route for Crisis ID: ${data.crisisId.substring(0, 6)}`);
+    
+    // Now we dispatch the truck in the UI
+    import('./queue.js').then(({ queueManager }) => {
+        queueManager.fetchAndRender(); // Fetch new queue data so AWAITING DRIVER becomes EN ROUTE!
+        
+        const crisis = queueManager.crises.find(c => c._id === data.crisisId);
+        if (crisis) {
+            import('./fleetManager.js').then(({ fleetManager }) => {
+                fleetManager.dispatchTruck(crisis, data.driverId);
+            });
+        }
+    });
 });
 
 // Theme Toggle Logic
@@ -108,7 +150,6 @@ async function initMap() {
     mapManager.init();
     await mapManager.loadWarehouses();
     inventoryManager.render();
-    fleetManager.startSimulation();
 }
 
 function initTabs() {
@@ -272,8 +313,9 @@ function initSimulator() {
         const crisis = queueManager.crises.find(c => c._id === id);
         if (!crisis || crisis.status === 'MONITORING') return;
 
-        // Optimistic UI: immediately mark as deployed so button disables instantly
+        // Optimistic UI update
         crisis.status = 'MONITORING';
+        crisis.dispatchStatus = 'PENDING_DRIVER';
         queueManager.render(queueManager.crises);
 
         // Call backend dispatch to allocate trucks and deduct inventory
@@ -296,8 +338,7 @@ function initSimulator() {
                     }
                 }
                 
-                // Dispatch truck on map using assigned warehouse
-                fleetManager.dispatchTruck(result.data);
+                // fleetManager.dispatchTruck(result.data); // Removed: We wait for 'dispatch:accepted' socket event from Driver App!
             } else if (response.status === 409 && result.fallback) {
                 // Show Fallback Modal
                 const modal = document.getElementById('fallback-modal');
@@ -320,6 +361,7 @@ function initSimulator() {
                     modal.classList.add('hidden');
                     // Revert UI
                     crisis.status = 'ACTIVE';
+                    crisis.dispatchStatus = 'NONE';
                     queueManager.render(queueManager.crises);
                 });
 
@@ -344,15 +386,17 @@ function initSimulator() {
                                     mapManager.renderLandmarks();
                                 }
                             }
-                            fleetManager.dispatchTruck(resAltJson.data);
+                            // fleetManager.dispatchTruck(resAltJson.data); // Removed: Waiting for Driver app
                         } else {
                             alert(resAltJson.error || "Dispatch failed on fallback");
                             crisis.status = 'ACTIVE';
+                            crisis.dispatchStatus = 'NONE';
                             queueManager.render(queueManager.crises);
                         }
                     } catch(e) {
                         console.error(e);
                         crisis.status = 'ACTIVE';
+                        crisis.dispatchStatus = 'NONE';
                         queueManager.render(queueManager.crises);
                     }
                 });
@@ -360,6 +404,7 @@ function initSimulator() {
                 console.error("Dispatch failed:", result.error);
                 // Revert optimistic UI
                 crisis.status = 'ACTIVE';
+                crisis.dispatchStatus = 'NONE';
                 queueManager.render(queueManager.crises);
                 alert(result.error || "Dispatch failed");
             }
@@ -374,36 +419,67 @@ function initSimulator() {
     window.deleteCrisis = async (id) => {
         const crisis = queueManager.crises.find(c => c._id === id);
         
-        // Return fleet if it was dispatched
-        if (crisis && crisis.status === 'MONITORING') {
-            try {
-                const response = await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-                });
-                const result = await response.json();
-                if (response.ok && result.warehouse) {
-                    const index = mapManager.landmarks.findIndex(lm => lm._id === result.warehouse._id);
-                    if (index !== -1) {
-                        mapManager.landmarks[index] = result.warehouse;
-                        mapManager.renderLandmarks();
-                    }
-                }
-            } catch(e) { console.error(e); }
-        }
+        // Optimistically animate UI removal
+        const row = document.getElementById(`crisis-row-${id}`);
+        if (row) {
+            row.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+            row.style.overflow = 'hidden';
+            row.style.opacity = '0';
+            row.style.transform = 'scale(0.95)';
+            row.style.maxHeight = row.offsetHeight + 'px';
+            
+            // Force reflow
+            void row.offsetWidth;
+            
+            row.style.maxHeight = '0px';
+            row.style.paddingTop = '0px';
+            row.style.paddingBottom = '0px';
+            row.style.marginTop = '0px';
+            row.style.marginBottom = '0px';
+            row.style.borderWidth = '0px';
 
+            setTimeout(() => {
+                if (row.parentNode) row.parentNode.removeChild(row);
+                // Also manually re-render just to be safe
+                queueManager.render(queueManager.crises);
+            }, 500);
+        }
+        
         // Optimistically remove truck from map immediately
         fleetManager.removeTruckForCrisis(id);
         
-        try {
-            const response = await fetch(`http://localhost:5000/api/v1/crises/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-            });
-            if (response.ok) {
-                queueManager.fetchAndRender();
+        // Remove from local data array
+        queueManager.crises = queueManager.crises.filter(c => c._id !== id);
+        
+        // Background network tasks
+        (async () => {
+            // Return fleet if it was dispatched
+            if (crisis && crisis.status === 'MONITORING') {
+                try {
+                    const response = await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+                    });
+                    const result = await response.json();
+                    if (response.ok && result.warehouse) {
+                        const index = mapManager.landmarks.findIndex(lm => lm._id === result.warehouse._id);
+                        if (index !== -1) {
+                            mapManager.landmarks[index] = result.warehouse;
+                            mapManager.renderLandmarks();
+                        }
+                    }
+                } catch(e) { console.error(e); }
             }
-        } catch(e) { console.error(e); }
+
+            try {
+                await fetch(`http://localhost:5000/api/v1/crises/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+                });
+                // We do not fetchAndRender() immediately to preserve the animation
+                // WebSockets or explicit refresh will handle syncing later if needed
+            } catch(e) { console.error(e); }
+        })();
     };
 
     window.toggleRequests = async (id) => {
@@ -599,9 +675,21 @@ function initSimulator() {
         const initialVal = parseFloat(speedSlider.value) / 10;
         fleetManager.setSpeed(initialVal);
         
-        speedSlider.addEventListener('input', () => {
-            const val = parseFloat(speedSlider.value) / 10;
+        // Ensure server gets the initial speed immediately upon connection
+        if (socketManager && socketManager.socket) {
+            if (socketManager.socket.connected) {
+                socketManager.socket.emit('admin:speed_update', initialVal);
+            } else {
+                socketManager.socket.on('connect', () => {
+                    socketManager.socket.emit('admin:speed_update', initialVal);
+                });
+            }
+        }
+
+        speedSlider.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) / 10;
             fleetManager.setSpeed(val);
+            socketManager.socket.emit('admin:speed_update', val);
             speedValue.textContent = `${val.toFixed(1)}x`;
         });
     }

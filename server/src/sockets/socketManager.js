@@ -2,21 +2,26 @@ import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { redisClient } from '../config/redis.config.js';
 import { verifyAccessToken } from '../utils/jwt.js';
+import { fleetEngine } from './FleetEngine.js';
 
 let io;
 
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGINS?.split(',') || '*',
+      origin: (origin, callback) => {
+        if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },
   });
 
   // Setup Redis Adapter for horizontal scaling
-  // We use the same redisClient for both pub and sub. In a very high-throughput
-  // production environment, you might want separate duplicate connections.
   const pubClient = redisClient;
   const subClient = pubClient.duplicate();
   io.adapter(createAdapter(pubClient, subClient));
@@ -31,10 +36,42 @@ export const initSocket = (httpServer) => {
   io.on('connection', (socket) => {
     console.log(`🔌 Client connected: ${socket.id} (User ID: ${socket.user.id})`);
 
-    // Clients can join specific "rooms" to only receive updates for a particular crisis zone
+    // Emit current speed to the newly connected client
+    socket.emit('hq:speed_update', fleetEngine.globalSpeedMultiplier);
+
+    // Sync mission state on login
+    const authDriverId = socket.handshake?.auth?.driverId;
+    if (authDriverId) {
+      const mission = fleetEngine.getMission(authDriverId);
+      if (mission) {
+        console.log(`[FLEET ENGINE] Driver ${authDriverId} reconnected, syncing state...`);
+        socket.emit('server:sync_state', mission);
+      }
+    }
+
+    socket.on('driver:start_engine', (data) => {
+        fleetEngine.startEngine(data.driverId);
+    });
+
     socket.on('join_crisis_room', (crisisId) => {
       socket.join(`crisis:${crisisId}`);
       console.log(`User ${socket.user.id} joined room crisis:${crisisId}`);
+    });
+
+    socket.on('subscribe', (room) => {
+      socket.join(room);
+      console.log(`User ${socket.id} joined room: ${room}`);
+      
+      // Send all active missions to admin when they subscribe to hq room
+      if (room === 'hq') {
+          const allMissions = Array.from(fleetEngine.activeMissions.values());
+          socket.emit('fleet:active_missions', allMissions);
+      }
+    });
+
+    socket.on('admin:speed_update', (speed) => {
+      io.to('drivers').emit('admin:speed_update', speed);
+      fleetEngine.setSpeed(speed);
     });
 
     socket.on('leave_crisis_room', (crisisId) => {
@@ -58,3 +95,4 @@ export const getIO = () => {
   }
   return io;
 };
+

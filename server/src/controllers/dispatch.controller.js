@@ -138,6 +138,7 @@ export const dispatchFleet = async (req, res, next) => {
 
         // Update crisis
         crisis.status = CrisisStatus.MONITORING;
+        crisis.dispatchStatus = 'PENDING_DRIVER';
         crisis.assignedWarehouseId = selectedWarehouse._id;
         await crisis.save();
 
@@ -147,6 +148,13 @@ export const dispatchFleet = async (req, res, next) => {
         const io = getIO();
         io.emit('crisis:updated', populatedCrisis);
         io.emit('warehouse:updated', selectedWarehouse);
+
+        // Notify Drivers at this specific warehouse
+        io.to(`warehouse:${selectedWarehouse._id}`).emit('driver:dispatch_requested', {
+            crisis: populatedCrisis,
+            manifest: suppliesRequired,
+            warehouse: selectedWarehouse
+        });
 
         return res.status(200).json({
             success: true,
@@ -158,35 +166,108 @@ export const dispatchFleet = async (req, res, next) => {
     }
 };
 
+export const acceptDispatch = async (req, res, next) => {
+    try {
+        const { crisisId } = req.params;
+        const { driverId } = req.body;
+
+        const crisis = await Crisis.findById(crisisId).populate('assignedWarehouseId');
+        if (!crisis) {
+            return res.status(404).json({ success: false, error: 'Crisis not found' });
+        }
+
+        if (crisis.dispatchStatus !== 'PENDING_DRIVER') {
+            return res.status(400).json({ success: false, error: 'Dispatch is not pending a driver' });
+        }
+
+        crisis.dispatchStatus = 'IN_TRANSIT'; // We keep this as in transit for the dashboard
+        crisis.assignedDriverId = driverId;
+        await crisis.save();
+
+        const io = getIO();
+        io.emit('crisis:updated', crisis);
+        io.emit('dispatch:accepted', {
+            crisisId: crisis._id,
+            driverId,
+            warehouse: crisis.assignedWarehouseId
+        });
+        
+        // Pass to Fleet Engine to fetch route and set to PENDING_START
+        const { fleetEngine } = await import('../sockets/FleetEngine.js');
+        const originCoords = [crisis.assignedWarehouseId.location.coordinates[1], crisis.assignedWarehouseId.location.coordinates[0]];
+        const destCoords = [crisis.epicenter.coordinates[1], crisis.epicenter.coordinates[0]];
+        
+        // Ensure the global loop is running
+        fleetEngine.start();
+        
+        const mission = await fleetEngine.acceptMission(
+            driverId, 
+            crisis._id, 
+            crisis.name, 
+            originCoords, 
+            destCoords, 
+            null // manifest not stored in db yet, let's omit for now
+        );
+
+        if (!mission) {
+             return res.status(500).json({ success: false, error: 'Failed to create route for mission' });
+        }
+
+        if (io) {
+            io.emit('fleet:new_mission', mission);
+        }
+
+        return res.status(200).json({ success: true, data: crisis, mission });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const returnFleet = async (req, res, next) => {
     try {
         const { crisisId } = req.params;
+        const { driverId } = req.body; // Driver app must send its driverId now
 
         const crisis = await Crisis.findById(crisisId);
         if (!crisis || !crisis.assignedWarehouseId) {
             return res.status(404).json({ success: false, error: 'Valid crisis not found' });
         }
 
-        const warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
-        if (warehouse) {
-            warehouse.trucks.available += 1;
-            // Cap at total
-            if (warehouse.trucks.available > warehouse.trucks.total) {
-                warehouse.trucks.available = warehouse.trucks.total;
+        const { fleetEngine } = await import('../sockets/FleetEngine.js');
+        
+        if (driverId) {
+            // Trigger return journey via engine
+            const success = await fleetEngine.startReturn(driverId);
+            if (!success) {
+                return res.status(500).json({ success: false, error: 'Failed to start return journey' });
             }
-            await warehouse.save();
+            return res.status(200).json({ success: true, message: 'Return journey started' });
+        } else {
+            // Original logic for when the background sim finalizes the return and deletes the crisis
+            const warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
+            if (warehouse) {
+                warehouse.trucks.available += 1;
+                // Cap at total
+                if (warehouse.trucks.available > warehouse.trucks.total) {
+                    warehouse.trucks.available = warehouse.trucks.total;
+                }
+                await warehouse.save();
+                
+                const io = getIO();
+                io.emit('warehouse:updated', warehouse);
+            }
+
+            await Crisis.findByIdAndDelete(crisisId);
             
             const io = getIO();
-            io.emit('warehouse:updated', warehouse);
+            io.emit('crisis:deleted', crisisId);
+
+            return res.status(200).json({
+                success: true,
+                message: 'Truck returned to warehouse and crisis resolved',
+                warehouse: warehouse
+            });
         }
-
-        await Crisis.findByIdAndDelete(crisisId);
-
-        return res.status(200).json({
-            success: true,
-            message: 'Truck returned to warehouse and crisis resolved',
-            warehouse: warehouse
-        });
     } catch (error) {
         next(error);
     }

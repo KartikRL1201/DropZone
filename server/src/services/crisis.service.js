@@ -56,6 +56,12 @@ export const CrisisService = {
       .limit(limit)
       .lean();
 
+    // Populate request count
+    const { VolunteerRequest } = await import('../models/VolunteerRequest.model.js');
+    for (const crisis of crises) {
+      crisis.requestCount = await VolunteerRequest.countDocuments({ crisisId: crisis._id, status: 'PENDING' });
+    }
+
     const totalCount = await Crisis.countDocuments(query);
     
     return { crises, totalCount };
@@ -108,6 +114,24 @@ export const CrisisService = {
   async deleteCrisis(crisisId, adminUserId) {
     const crisis = await Crisis.findById(crisisId);
     if (!crisis) {throw new Error('Crisis not found');}
+    
+    // Restore the assigned truck if one was deployed
+    if (crisis.assignedWarehouseId) {
+      const { Warehouse } = await import('../models/Warehouse.model.js');
+      const warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
+      if (warehouse) {
+        warehouse.trucks.available += 1;
+        if (warehouse.trucks.available > warehouse.trucks.total) {
+            warehouse.trucks.available = warehouse.trucks.total;
+        }
+        await warehouse.save();
+        try {
+          const io = getIO();
+          io.emit('warehouse:updated', warehouse);
+        } catch (e) {}
+      }
+    }
+
     await crisis.deleteOne();
     await AuditLog.create({
       userId: adminUserId,

@@ -75,7 +75,8 @@ class QueueManager {
 
         displayCrises.forEach((crisis, index) => {
             const row = document.createElement('div');
-            row.className = `flex flex-col p-4 border-b editorial-border grid-row-hover`;
+            row.id = `crisis-row-${crisis._id}`;
+            row.className = `flex flex-col p-4 border-b editorial-border grid-row-hover transition-all duration-500 ease-in-out origin-top`;
             
             const timeWaiting = this._calculateWaitTime(crisis.createdAt);
             
@@ -114,10 +115,16 @@ class QueueManager {
                     <div class="col-span-3 text-right flex flex-col items-end justify-center gap-1">
                         <div class="flex items-center gap-2 mt-1">
                             <button onclick="window.toggleRequests('${crisis._id}')" class="text-[9px] font-bold tracking-widest uppercase opacity-60 hover:opacity-100 transition-opacity mr-2 flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">expand_more</span> Requests</button>
-                            ${crisis.status === 'MONITORING' 
-                                ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1">Deployed</button>`
-                                : `<button onclick="window.deployFleet('${crisis._id}')" class="text-[9px] font-bold tracking-widest uppercase text-lumenaLight bg-lumenaDark dark:bg-lumenaLight dark:text-lumenaDark hover:opacity-80 transition-opacity rounded-full px-3 py-1">Deploy</button>`
-                            }
+                            <div id="btn-container-${crisis._id}">
+                                ${crisis.dispatchStatus === 'PENDING_DRIVER' 
+                                    ? `<button disabled class="opacity-70 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-statusHigh border border-statusHigh/50 bg-statusHigh/10 rounded-full px-3 py-1 flex items-center gap-1"><span class="material-symbols-outlined text-[12px] animate-spin">sync</span> AWAITING DRIVER</button>`
+                                    : (crisis.dispatchStatus === 'IN_TRANSIT' || crisis.status === 'MONITORING')
+                                        ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1">En Route</button>`
+                                        : (!crisis.requestCount || crisis.requestCount === 0)
+                                            ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1" title="No pending requests">Deploy</button>`
+                                            : `<button onclick="window.deployFleet('${crisis._id}')" id="btn-deploy-${crisis._id}" class="text-[9px] font-bold tracking-widest uppercase text-lumenaLight bg-lumenaDark dark:bg-lumenaLight dark:text-lumenaDark hover:opacity-80 transition-opacity rounded-full px-3 py-1">Deploy</button>`
+                                }
+                            </div>
                             <button onclick="window.deleteCrisis('${crisis._id}')" class="text-statusCritical opacity-40 hover:opacity-100 transition-opacity"><span class="material-symbols-outlined text-[14px]">delete</span></button>
                         </div>
                     </div>
