@@ -127,6 +127,15 @@ async function init() {
     socketManager.on('dispatch:accepted', handleDispatchAccepted);
     socketManager.on('mission:arrived_destination', handleArrival);
     socketManager.on('mission:completed', handleCompleted);
+
+    socketManager.on('driver:returning', (data) => {
+        if (currentMission) {
+            currentMission.routePath = data.route;
+            currentMission.isReturning = true;
+            // Swap origin and dest for return trip drawing
+            initMap(currentMission.destCoords, currentMission.originCoords, data.route);
+        }
+    });
 }
 
 // --- Map Theme Handler ---
@@ -363,8 +372,14 @@ function setupMissionUI(mission) {
     }
 
     // Initialize Map
-    const startCoords = mission.originCoords;
-    const destCoords = mission.destCoords;
+    let startCoords = mission.originCoords;
+    let destCoords = mission.destCoords;
+    
+    if (mission.isReturning) {
+        startCoords = mission.destCoords;
+        destCoords = mission.originCoords;
+    }
+    
     initMap(startCoords, destCoords, mission.routePath);
 
     // Update Button states based on exact server state

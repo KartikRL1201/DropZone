@@ -55,6 +55,12 @@ class SocketManager {
         this.socket.on('server:cancel_mission', (data) => {
             this._notify('server:cancel_mission', data);
         });
+        
+        this.socket.on('driver:returning', (data) => {
+            if (data.driverId === this.driverId) {
+                this._notify('driver:returning', data);
+            }
+        });
 
         // Server authoritative sync and telemetry
         this.socket.on('server:sync_state', (data) => {

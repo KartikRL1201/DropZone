@@ -115,6 +115,11 @@ class FleetEngine {
                 crisisId: mission.crisisId,
                 route: mission.routePath
             });
+            io.to(`driver:${mission.driverId}`).emit('driver:returning', {
+                driverId: mission.driverId,
+                crisisId: mission.crisisId,
+                route: mission.routePath
+            });
         }
 
         return true;
