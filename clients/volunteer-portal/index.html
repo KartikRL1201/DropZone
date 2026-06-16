@@ -66,14 +66,14 @@
     </header>
 
     <!-- Main Content -->
-    <main class="flex-1 w-full max-w-2xl mx-auto px-6 mt-4">
+    <main class="flex-1 w-full max-w-2xl mx-auto px-6 mt-4 flex flex-col">
         
-        <div class="mb-10 fade-up-element" style="animation-delay: 0.1s;">
+        <div id="header-text" class="mb-10 fade-up-element" style="animation-delay: 0.1s;">
             <h1 class="text-3xl md:text-4xl font-bold tracking-tight mb-2">Request Assistance</h1>
             <p class="text-sm opacity-60 font-medium">Submit an emergency supply drop request. Our drone and truck fleet will route to your exact location.</p>
         </div>
 
-        <form id="volunteer-form" class="space-y-8 fade-up-element" style="animation-delay: 0.2s;">
+        <form id="volunteer-form" class="space-y-8 fade-up-element flex-1" style="animation-delay: 0.2s;">
             <!-- Crisis Selection -->
             <div class="p-6 border editorial-border bg-lumenaDark/5 dark:bg-lumenaLight/5 rounded-2xl">
                 <h2 class="text-xs font-bold tracking-widest uppercase mb-4 opacity-80 flex items-center gap-2">
@@ -195,12 +195,12 @@
         </form>
         
         <!-- Success State -->
-        <div id="success-state" class="hidden text-center py-16 fade-up-element">
-            <div class="w-24 h-24 bg-statusLow/20 text-statusLow rounded-full flex items-center justify-center mx-auto mb-6">
+        <div id="success-state" class="hidden flex-1 flex-col items-center justify-center text-center py-8 fade-up-element w-full">
+            <div class="w-24 h-24 bg-statusLow/20 text-statusLow rounded-full flex items-center justify-center mb-6">
                 <span class="material-symbols-outlined text-5xl">check_circle</span>
             </div>
             <h2 class="text-3xl font-bold mb-3 tracking-tight">Request Transmitted</h2>
-            <p class="text-sm opacity-60 mb-10 max-w-sm mx-auto leading-relaxed font-medium">Your coordinates and manifest have been securely logged. A dispatch fleet will be routed based on priority.</p>
+            <p class="text-sm opacity-60 mb-10 max-w-sm leading-relaxed font-medium">Your coordinates and manifest have been securely logged. A dispatch fleet will be routed based on priority.</p>
             <button id="btn-new-request" class="py-3 px-8 bg-lumenaDark text-lumenaLight dark:bg-lumenaLight dark:text-lumenaDark font-bold tracking-widest text-[10px] uppercase rounded-full hover:opacity-80 transition-opacity inline-block">Submit Another Incident</button>
         </div>
     </main>

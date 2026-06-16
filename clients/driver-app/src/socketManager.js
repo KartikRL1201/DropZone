@@ -51,6 +51,10 @@ class SocketManager {
                 this._notify('dispatch:accepted', data);
             }
         });
+        
+        this.socket.on('server:cancel_mission', (data) => {
+            this._notify('server:cancel_mission', data);
+        });
 
         // Server authoritative sync and telemetry
         this.socket.on('server:sync_state', (data) => {

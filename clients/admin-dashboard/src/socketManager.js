@@ -44,7 +44,8 @@ class SocketManager {
         this.socket.on('driver:returning', (data) => this._notify('driver:returning', data));
         this.socket.on('crisis:new', (data) => this._notify('crisis:new', data));
         this.socket.on('crisis:updated', (data) => this._notify('crisis:updated', data));
-        this.socket.on('crisis:deleted', (data) => this._notify('crisis:deleted', data));
+        this.socket.on('crisis:delete', (data) => this._notify('crisis:delete', data));
+        this.socket.on('crisis:deleteAll', (data) => this._notify('crisis:deleteAll', data));
         this.socket.on('warehouse:updated', (data) => this._notify('warehouse:updated', data));
     }
 

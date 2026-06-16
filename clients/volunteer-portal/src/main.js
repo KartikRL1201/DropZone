@@ -321,7 +321,9 @@ function setupForm() {
 
             if (result.success) {
                 form.classList.add('hidden');
+                document.getElementById('header-text').classList.add('hidden');
                 successState.classList.remove('hidden');
+                successState.classList.add('flex');
                 // Scroll to top
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
@@ -349,6 +351,8 @@ function setupForm() {
             marker = null;
         }
         successState.classList.add('hidden');
+        successState.classList.remove('flex');
+        document.getElementById('header-text').classList.remove('hidden');
         form.classList.remove('hidden');
         
         // Reset items to just 1

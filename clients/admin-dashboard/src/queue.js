@@ -103,7 +103,7 @@ class QueueManager {
                     </div>
                     
                     <div class="col-span-3 flex flex-col">
-                        <span class="font-bold text-sm truncate">${crisis.name || 'Crisis Zone'}</span>
+                        <span class="font-bold text-sm truncate" title="${crisis.name || 'Crisis Zone'}">${crisis.name || 'Crisis Zone'}</span>
                         <span class="text-[9px] font-bold tracking-widest uppercase opacity-40 mt-1 truncate">Pop: ${crisis.estimatedAffected || 0}</span>
                     </div>
                     
@@ -119,7 +119,7 @@ class QueueManager {
                                 ${crisis.dispatchStatus === 'PENDING_DRIVER' 
                                     ? `<button disabled class="opacity-70 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-statusHigh border border-statusHigh/50 bg-statusHigh/10 rounded-full px-3 py-1 flex items-center gap-1"><span class="material-symbols-outlined text-[12px] animate-spin">sync</span> AWAITING DRIVER</button>`
                                     : (crisis.dispatchStatus === 'IN_TRANSIT' || crisis.status === 'MONITORING')
-                                        ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1">En Route</button>`
+                                        ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1 whitespace-nowrap overflow-hidden text-ellipsis max-w-full">En Route ${crisis.assignedDriverId ? `(${crisis.assignedDriverId})` : ''}</button>`
                                         : (!crisis.requestCount || crisis.requestCount === 0)
                                             ? `<button disabled class="opacity-50 cursor-not-allowed text-[9px] font-bold tracking-widest uppercase text-gray-400 border border-gray-500/30 bg-gray-500/10 rounded-full px-3 py-1" title="No pending requests">Deploy</button>`
                                             : `<button onclick="window.deployFleet('${crisis._id}')" id="btn-deploy-${crisis._id}" class="text-[9px] font-bold tracking-widest uppercase text-lumenaLight bg-lumenaDark dark:bg-lumenaLight dark:text-lumenaDark hover:opacity-80 transition-opacity rounded-full px-3 py-1">Deploy</button>`

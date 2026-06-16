@@ -229,7 +229,7 @@ export const returnFleet = async (req, res, next) => {
         const { driverId } = req.body; // Driver app must send its driverId now
 
         const crisis = await Crisis.findById(crisisId);
-        if (!crisis || !crisis.assignedWarehouseId) {
+        if (!crisis) {
             return res.status(404).json({ success: false, error: 'Valid crisis not found' });
         }
 
@@ -243,24 +243,35 @@ export const returnFleet = async (req, res, next) => {
             }
             return res.status(200).json({ success: true, message: 'Return journey started' });
         } else {
-            // Original logic for when the background sim finalizes the return and deletes the crisis
-            const warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
-            if (warehouse) {
-                warehouse.trucks.available += 1;
-                // Cap at total
-                if (warehouse.trucks.available > warehouse.trucks.total) {
-                    warehouse.trucks.available = warehouse.trucks.total;
+            let warehouse = null;
+            if (crisis.assignedWarehouseId) {
+                warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
+                if (warehouse) {
+                    warehouse.trucks.available += 1;
+                    // Cap at total
+                    if (warehouse.trucks.available > warehouse.trucks.total) {
+                        warehouse.trucks.available = warehouse.trucks.total;
+                    }
+                    await warehouse.save();
+                    
+                    const io = getIO();
+                    io.emit('warehouse:updated', warehouse);
                 }
-                await warehouse.save();
-                
-                const io = getIO();
-                io.emit('warehouse:updated', warehouse);
             }
 
+            const cancelledDriverId = fleetEngine.cancelMissionByCrisisId(crisisId);
+            if (cancelledDriverId) {
+                try {
+                    const io = getIO();
+                    io.to(`driver:${cancelledDriverId}`).emit('server:cancel_mission');
+                } catch(e) {}
+            }
+
+            await VolunteerRequest.deleteMany({ crisisId });
             await Crisis.findByIdAndDelete(crisisId);
             
             const io = getIO();
-            io.emit('crisis:deleted', crisisId);
+            io.emit('crisis:delete', { id: crisisId });
 
             return res.status(200).json({
                 success: true,

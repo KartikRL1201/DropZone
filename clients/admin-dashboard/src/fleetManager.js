@@ -35,25 +35,35 @@ class FleetManager {
 
             // Listen for 500ms telemetry ticks
             socketManager.on('fleet:telemetry', (batch) => {
+                const activeIds = new Set(batch.map(d => d.driverId));
+                for (const driverId of this.vehicles.keys()) {
+                    if (!activeIds.has(driverId)) {
+                        this.vehicles.delete(driverId);
+                    }
+                }
+
                 batch.forEach(data => {
-                    const existing = this.vehicles.get(data.driverId) || { id: data.driverId };
-                    existing.crisisId = data.crisisId;
-                    existing.location = data.location;
-                    existing.heading = data.heading;
-                    existing.state = data.state;
-                    existing.returning = data.state === 'RETURNING';
-                    this.vehicles.set(data.driverId, existing);
+                    const vehicle = this.vehicles.get(data.driverId) || {};
+                    vehicle.id = data.driverId;
+                    vehicle.crisisId = data.crisisId;
+                    vehicle.location = data.location;
+                    vehicle.heading = data.heading;
+                    vehicle.state = data.state;
+                    vehicle.returning = data.state === 'RETURNING';
+                    this.vehicles.set(data.driverId, vehicle);
                     
-                    if (existing.state === 'AT_DESTINATION') {
-                        // Hide marker on map to show it's at crisis
-                        if (existing.crisisId) {
-                            if (mapManager.markers[existing.crisisId]) {
-                                mapManager.map.removeLayer(mapManager.markers[existing.crisisId]);
-                                delete mapManager.markers[existing.crisisId];
+                    if (vehicle.state === 'AT_DESTINATION') {
+                        if (vehicle.crisisId) {
+                            if (mapManager.markers[vehicle.crisisId]) {
+                                mapManager.map.removeLayer(mapManager.markers[vehicle.crisisId]);
+                                delete mapManager.markers[vehicle.crisisId];
                             }
-                            mapManager.hiddenMarkerIds.add(existing.crisisId);
+                            mapManager.hiddenMarkerIds.add(vehicle.crisisId);
                         }
                     }
+                    
+                    // Render movement on map
+                    mapManager.updateTruckMarker(data.driverId, data.location, data.heading, data.state);
                 });
                 this.renderFleet();
             });
@@ -64,7 +74,6 @@ class FleetManager {
 
             socketManager.on('mission:completed', (data) => {
                 this.vehicles.delete(data.driverId);
-                mapManager.removeRouteLayer(data.driverId);
                 this.renderFleet();
             });
             
@@ -108,7 +117,6 @@ class FleetManager {
         }
         if (driverIdToRemove) {
             this.vehicles.delete(driverIdToRemove);
-            mapManager.removeRouteLayer(driverIdToRemove);
             this.renderFleet();
         }
     }

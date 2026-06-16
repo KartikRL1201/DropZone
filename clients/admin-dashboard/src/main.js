@@ -417,8 +417,6 @@ function initSimulator() {
     };
 
     window.deleteCrisis = async (id) => {
-        const crisis = queueManager.crises.find(c => c._id === id);
-        
         // Optimistically animate UI removal
         const row = document.getElementById(`crisis-row-${id}`);
         if (row) {
@@ -440,46 +438,20 @@ function initSimulator() {
 
             setTimeout(() => {
                 if (row.parentNode) row.parentNode.removeChild(row);
-                // Also manually re-render just to be safe
+                queueManager.crises = queueManager.crises.filter(c => c._id !== id);
                 queueManager.render(queueManager.crises);
+                mapManager.render(queueManager.crises); // Force map pin removal
             }, 500);
         }
         
-        // Optimistically remove truck from map immediately
         fleetManager.removeTruckForCrisis(id);
         
-        // Remove from local data array
-        queueManager.crises = queueManager.crises.filter(c => c._id !== id);
-        
-        // Background network tasks
-        (async () => {
-            // Return fleet if it was dispatched
-            if (crisis && crisis.status === 'MONITORING') {
-                try {
-                    const response = await fetch(`http://localhost:5000/api/v1/dispatch/return/${id}`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-                    });
-                    const result = await response.json();
-                    if (response.ok && result.warehouse) {
-                        const index = mapManager.landmarks.findIndex(lm => lm._id === result.warehouse._id);
-                        if (index !== -1) {
-                            mapManager.landmarks[index] = result.warehouse;
-                            mapManager.renderLandmarks();
-                        }
-                    }
-                } catch(e) { console.error(e); }
-            }
-
-            try {
-                await fetch(`http://localhost:5000/api/v1/crises/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-                });
-                // We do not fetchAndRender() immediately to preserve the animation
-                // WebSockets or explicit refresh will handle syncing later if needed
-            } catch(e) { console.error(e); }
-        })();
+        try {
+            await fetch(`http://localhost:5000/api/v1/dispatch/${id}/return`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+            });
+        } catch(e) { console.error(e); }
     };
 
     window.toggleRequests = async (id) => {
@@ -538,17 +510,7 @@ function initSimulator() {
     const btnClearQueue = document.getElementById('btn-clear-queue');
     if (btnClearQueue) {
         btnClearQueue.addEventListener('click', async () => {
-            // First return ALL dispatched trucks
-            for (const crisis of queueManager.crises) {
-                if (crisis.status === 'MONITORING') {
-                    try {
-                        await fetch(`http://localhost:5000/api/v1/dispatch/return/${crisis._id}`, {
-                            method: 'POST',
-                            headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-                        });
-                    } catch(e) {}
-                }
-            }
+            // The backend deleteAll endpoint handles mission cancellations globally
 
             // Optimistically remove all trucks from map immediately
             fleetManager.clearAllTrucks();
@@ -558,9 +520,6 @@ function initSimulator() {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
                 });
-                if (response.ok) {
-                    queueManager.fetchAndRender();
-                }
             } catch(e) { console.error(e); }
         });
     }
@@ -726,6 +685,54 @@ async function bootstrap() {
     
     // Connect Real-time Socket
     socketManager.connect(MOCK_HQ_TOKEN);
+    
+    // Register sync listeners
+    socketManager.on('crisis:delete', (data) => {
+        if (data && data.id) {
+            fleetManager.removeTruckForCrisis(data.id);
+            
+            // Remove the map pin unconditionally
+            if (mapManager.markers[data.id]) {
+                mapManager.map.removeLayer(mapManager.markers[data.id]);
+                delete mapManager.markers[data.id];
+            }
+
+            // Animate and remove from the list if it exists
+            const existingRow = document.getElementById(`crisis-row-${data.id}`);
+            if (existingRow) {
+                existingRow.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                existingRow.style.overflow = 'hidden';
+                existingRow.style.opacity = '0';
+                existingRow.style.transform = 'scale(0.95)';
+                existingRow.style.maxHeight = existingRow.offsetHeight + 'px';
+                void existingRow.offsetWidth; // Reflow
+                existingRow.style.maxHeight = '0px';
+                existingRow.style.paddingTop = '0px';
+                existingRow.style.paddingBottom = '0px';
+                existingRow.style.marginTop = '0px';
+                existingRow.style.marginBottom = '0px';
+                existingRow.style.borderWidth = '0px';
+                
+                setTimeout(() => {
+                    if (existingRow.parentNode) existingRow.parentNode.removeChild(existingRow);
+                    queueManager.crises = queueManager.crises.filter(c => c._id !== data.id);
+                    queueManager.render(queueManager.crises);
+                    mapManager.render(queueManager.crises);
+                }, 500);
+            } else {
+                queueManager.crises = queueManager.crises.filter(c => c._id !== data.id);
+                queueManager.render(queueManager.crises);
+                mapManager.render(queueManager.crises);
+            }
+        }
+    });
+
+    socketManager.on('crisis:deleteAll', () => {
+        queueManager.fetchAndRender();
+        fleetManager.clearAllTrucks();
+        Object.values(mapManager.markers).forEach(marker => mapManager.map.removeLayer(marker));
+        mapManager.markers = {};
+    });
     
     // Initial Fetch
     await queueManager.fetchAndRender();

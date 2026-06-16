@@ -42,6 +42,9 @@ export const initSocket = (httpServer) => {
     // Sync mission state on login
     const authDriverId = socket.handshake?.auth?.driverId;
     if (authDriverId) {
+      socket.join(`driver:${authDriverId}`);
+      console.log(`[SOCKET] Driver ${authDriverId} joined personal room driver:${authDriverId}`);
+      
       const mission = fleetEngine.getMission(authDriverId);
       if (mission) {
         console.log(`[FLEET ENGINE] Driver ${authDriverId} reconnected, syncing state...`);

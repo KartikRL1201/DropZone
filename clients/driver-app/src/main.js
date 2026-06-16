@@ -78,6 +78,15 @@ async function init() {
         socketManager.startEngine();
     });
 
+    socketManager.on('dispatch:accepted', () => {
+        dispatchModal.classList.add('hidden');
+    });
+
+    socketManager.on('server:cancel_mission', () => {
+        alert("HQ has aborted this mission. You have been cleared to standby.");
+        resetDashboard();
+    });
+
     btnUnload.addEventListener('click', async () => {
         if (!currentMission) return;
         btnUnload.disabled = true;
@@ -490,6 +499,11 @@ btnAcceptMission.addEventListener('click', async () => {
             pendingDispatchData = null;
         } else {
             alert(json.error || 'Failed to accept dispatch.');
+            if (json.error === 'Dispatch is not pending a driver') {
+                acceptModal.classList.add('hidden');
+                acceptModal.classList.remove('flex');
+                pendingDispatchData = null;
+            }
         }
     } catch (e) {
         alert("Network error.");

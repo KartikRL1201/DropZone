@@ -317,6 +317,21 @@ class MapManager {
             }
         });
     }
+
+    updateTruckMarker(driverId, location, heading, state) {
+        if (!this.map || !location) return;
+        
+        const marker = this.fleetMarkers[driverId];
+        if (marker) {
+            // Smoothly animate the marker to the new location
+            marker.setLatLng(location);
+            
+            // Only update rotation if we have a custom icon setup and a DOM element
+            if (marker._icon && marker._icon.querySelector('div')) {
+                marker._icon.querySelector('div').style.transform = `rotate(${heading || 0}deg)`;
+            }
+        }
+    }
 }
 
 export const mapManager = new MapManager('map');

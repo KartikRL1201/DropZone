@@ -42,6 +42,9 @@ app.use((req, res, _next) => {
 // Global Error Handler Middleware
 app.use((err, req, res, _next) => {
   console.error('🔥 Unhandled Error:', err);
+  import('fs').then(fs => {
+    fs.appendFileSync('crash.log', new Date().toISOString() + ' ' + err.message + '\n' + err.stack + '\n\n');
+  });
   
   // Don't leak stack traces in production
   const isProd = env.NODE_ENV === 'production';

@@ -1,5 +1,6 @@
 import { Crisis } from '../models/Crisis.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
+import { VolunteerRequest } from '../models/VolunteerRequest.model.js';
 import { CrisisStatus } from '@dropzone/shared-domain';
 import { getIO } from '../sockets/socketManager.js';
 
@@ -115,14 +116,26 @@ export const CrisisService = {
     const crisis = await Crisis.findById(crisisId);
     if (!crisis) {throw new Error('Crisis not found');}
     
-    // Restore the assigned truck if one was deployed
+    // 1. Cancel the mission in FleetEngine
+    const { fleetEngine } = await import('../sockets/FleetEngine.js');
+    const driverId = fleetEngine.cancelMissionByCrisisId(crisisId);
+    
+    // 2. Notify the affected driver to reset
+    if (driverId) {
+        try {
+            const io = getIO();
+            io.to(`driver:${driverId}`).emit('server:cancel_mission');
+        } catch (e) { console.error('Error emitting cancel mission:', e); }
+    }
+
+    // Restore pool if assigned
     if (crisis.assignedWarehouseId) {
       const { Warehouse } = await import('../models/Warehouse.model.js');
       const warehouse = await Warehouse.findById(crisis.assignedWarehouseId);
       if (warehouse) {
         warehouse.trucks.available += 1;
         if (warehouse.trucks.available > warehouse.trucks.total) {
-            warehouse.trucks.available = warehouse.trucks.total;
+          warehouse.trucks.available = warehouse.trucks.total;
         }
         await warehouse.save();
         try {
@@ -132,14 +145,27 @@ export const CrisisService = {
       }
     }
 
-    await crisis.deleteOne();
-    await AuditLog.create({
-      userId: adminUserId,
-      action: 'DELETE_CRISIS',
-      entityType: 'Crisis',
-      entityId: crisis._id,
-      changes: { before: crisis.toObject() }
-    });
+    await VolunteerRequest.deleteMany({ crisisId });
+    await Crisis.findByIdAndDelete(crisisId);
+    
+    let validUserId = adminUserId;
+    const mongoose = (await import('mongoose')).default;
+    
+    if (adminUserId === 'system' || !mongoose.Types.ObjectId.isValid(adminUserId)) {
+        const { User } = await import('../models/User.model.js');
+        const admin = await User.findOne({ role: 'SUPER_ADMIN' });
+        validUserId = admin ? admin._id : null;
+    }
+    
+    if (validUserId && mongoose.Types.ObjectId.isValid(validUserId)) {
+        await AuditLog.create({
+          userId: validUserId,
+          action: 'DELETE_CRISIS',
+          entityType: 'Crisis',
+          entityId: crisis._id,
+          changes: { before: crisis.toObject() }
+        });
+    }
     // Broadcast delete event
     try {
       const io = getIO();
@@ -149,6 +175,41 @@ export const CrisisService = {
   },
 
   async deleteAllCrises(adminUserId) {
+    // 1. Restore ALL assigned trucks
+    const activeCrises = await Crisis.find({ assignedWarehouseId: { $ne: null } });
+    const warehouseRestores = {};
+    activeCrises.forEach(crisis => {
+        const wId = crisis.assignedWarehouseId.toString();
+        warehouseRestores[wId] = (warehouseRestores[wId] || 0) + 1;
+    });
+
+    const { Warehouse } = await import('../models/Warehouse.model.js');
+    for (const wId of Object.keys(warehouseRestores)) {
+        const warehouse = await Warehouse.findById(wId);
+        if (warehouse) {
+            warehouse.trucks.available += warehouseRestores[wId];
+            if (warehouse.trucks.available > warehouse.trucks.total) {
+                warehouse.trucks.available = warehouse.trucks.total;
+            }
+            await warehouse.save();
+            try {
+                const io = getIO();
+                io.emit('warehouse:updated', warehouse);
+            } catch (e) {}
+        }
+    }
+
+    // 2. Cancel all missions in FleetEngine
+    const { fleetEngine } = await import('../sockets/FleetEngine.js');
+    fleetEngine.cancelAllMissions();
+    
+    // 3. Notify all connected drivers globally that their missions are cancelled
+    try {
+        const io = getIO();
+        io.emit('server:cancel_mission'); // Emit globally
+    } catch (e) {}
+
+    await VolunteerRequest.deleteMany({});
     await Crisis.deleteMany({});
     try {
       const io = getIO();

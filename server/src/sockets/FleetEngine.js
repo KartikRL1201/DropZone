@@ -120,6 +120,24 @@ class FleetEngine {
         return true;
     }
 
+    cancelMissionByCrisisId(crisisId) {
+        let foundDriverId = null;
+        for (const [driverId, mission] of this.activeMissions.entries()) {
+            if (mission.crisisId.toString() === crisisId.toString()) {
+                foundDriverId = driverId;
+                break;
+            }
+        }
+        if (foundDriverId) {
+            this.activeMissions.delete(foundDriverId);
+        }
+        return foundDriverId;
+    }
+
+    cancelAllMissions() {
+        this.activeMissions.clear();
+    }
+
     getMission(driverId) {
         return this.activeMissions.get(driverId);
     }
@@ -221,20 +239,18 @@ class FleetEngine {
             });
         }
 
-        if (telemetryBatch.length > 0) {
-            const io = getIO();
-            if (io) {
-                // Emit to all clients (drivers and admin)
-                io.emit('fleet:telemetry', telemetryBatch);
-            }
+        const io = getIO();
+        if (io) {
+            // Emit to all clients (drivers and admin), always emit to sync zero-truck state
+            io.emit('fleet:telemetry', telemetryBatch);
         }
     }
 
     async finalizeReturn(driverId, crisisId) {
         try {
-            // Hit the existing returnFleet endpoint logic directly or via HTTP
-            const res = await this.httpPost(`http://localhost:5000/api/v1/dispatch/${crisisId}/return`);
-            console.log(`[FLEET ENGINE] Auto-finalized return for ${driverId}`, res);
+            const { CrisisService } = await import('../services/crisis.service.js');
+            await CrisisService.deleteCrisis(crisisId, 'system');
+            console.log(`[FLEET ENGINE] Auto-finalized return for ${driverId}`);
             
             const io = getIO();
             if (io) io.emit('mission:completed', { driverId, crisisId });
