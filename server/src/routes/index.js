@@ -6,6 +6,7 @@ import volunteerRoutes from './volunteer.routes.js';
 import driverRoutes from './driver.routes.js';
 import dispatchRoutes from './dispatch.routes.js';
 import warehouseRoutes from './warehouse.routes.js';
+import userRoutes from './user.routes.js';
 import { globalRateLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = Router();
@@ -21,5 +22,6 @@ router.use('/requests', volunteerRoutes);
 router.use('/driver', driverRoutes);
 router.use('/dispatch', dispatchRoutes);
 router.use('/warehouses', warehouseRoutes);
+router.use('/users', userRoutes);
 
 export default router;

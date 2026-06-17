@@ -1,4 +1,5 @@
 import { socketManager } from './socketManager.js';
+import { authManager } from './authManager.js';
 
 // --- State ---
 let driverId = null;
@@ -12,7 +13,8 @@ let routePolyline = null;
 const loginScreen = document.getElementById('login-screen');
 const appScreen = document.getElementById('app-screen');
 const loginForm = document.getElementById('login-form');
-const driverIdInput = document.getElementById('driver-id');
+const emailInput = document.getElementById('login-email');
+const passwordInput = document.getElementById('login-password');
 
 const displayDriverId = document.getElementById('display-driver-id');
 const connectionStatus = document.getElementById('connection-status');
@@ -28,16 +30,10 @@ const btnStartRoute = document.getElementById('btn-start-route');
 const btnUnload = document.getElementById('btn-unload');
 const themeToggle = document.getElementById('theme-toggle');
 
-const warehouseList = document.getElementById('warehouse-list');
-const warehouseIdInput = document.getElementById('warehouse-id');
-const warehouseCodeInput = document.getElementById('warehouse-code');
 const btnLogin = document.getElementById('btn-login');
 
 // --- Initialization ---
 async function init() {
-    updateWarehouseDropdown();
-    setInterval(updateWarehouseDropdown, 3000);
-
     // Theme Toggle Logic
     if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
         document.documentElement.classList.add('dark');
@@ -62,15 +58,74 @@ async function init() {
         }
     });
 
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const id = driverIdInput.value.trim().toUpperCase();
-        const warehouseId = warehouseIdInput.value;
-        const warehouseCode = warehouseCodeInput.value;
-        if (id && warehouseId) {
-            login(id, warehouseId, warehouseCode);
-        }
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        
+        const errorElement = document.getElementById('login-error');
+        errorElement.classList.add('hidden', 'opacity-0');
+        btnLogin.disabled = true;
+        btnLogin.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> Authenticating...';
+
+        try {
+            // Only login if we don't have a valid session
+            if (!authManager.user) {
+                if (!email || !password) {
+                    throw new Error("Email and password required.");
+                }
+                    const success = await authManager.login(email, password);
+                    if (!success) {
+                        throw new Error('Invalid credentials');
+                    }
+                }
+
+                if (authManager.user.role !== 'DRIVER') {
+                    throw new Error('Unauthorized role. Must be DRIVER.');
+                }
+                
+                // Get assigned warehouse from user object
+                const warehouse = authManager.user.assignedWarehouse;
+                if (!warehouse) {
+                    throw new Error('Driver is not assigned to a node.');
+                }
+                
+                // Proceed with driver initialization
+                login(authManager.user._id, warehouse._id, warehouse.code);
+            } catch (err) {
+                errorElement.innerText = err.message || 'Authentication failed.';
+                errorElement.classList.remove('hidden');
+                errorElement.classList.remove('opacity-0');
+                btnLogin.disabled = false;
+                btnLogin.innerHTML = 'Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>';
+                
+                // Clear session if role failed
+                if (err.message.includes('Unauthorized') || err.message.includes('assigned')) {
+                    authManager.logout();
+                }
+            }
     });
+
+    // Check existing session
+    let hasSession = false;
+    try {
+        await authManager.refresh();
+        hasSession = authManager.isAuthenticated();
+    } catch (e) {
+        hasSession = false;
+    }
+
+    if (hasSession && authManager.user && authManager.user.role === 'DRIVER') {
+        // Hide email/password inputs since we are already authenticated
+        emailInput.parentElement.classList.add('hidden');
+        passwordInput.parentElement.classList.add('hidden');
+        btnLogin.innerHTML = 'Session Restored. Select Node & Link';
+        // Auto-login since they are authenticated and have a session
+        const warehouse = authManager.user.assignedWarehouse;
+        if (warehouse) {
+            login(authManager.user._id, warehouse._id, warehouse.code);
+        }
+    }
 
     btnStartRoute.addEventListener('click', () => {
         btnStartRoute.classList.add('hidden');
@@ -153,104 +208,26 @@ function setMapTheme(theme) {
 
 // --- App Flow ---
 
-async function updateWarehouseDropdown() {
-    if (loginScreen.classList.contains('hidden')) return;
-    try {
-        const resCrises = await fetch('http://localhost:5000/api/v1/crises?limit=100');
-        const crisesJson = await resCrises.json();
-        const pendingByWarehouse = {};
-        if (crisesJson.success && crisesJson.data) {
-            crisesJson.data.forEach(c => {
-                if (c.dispatchStatus === 'PENDING_DRIVER' && c.assignedWarehouseId) {
-                    const whId = typeof c.assignedWarehouseId === 'object' ? c.assignedWarehouseId._id : c.assignedWarehouseId;
-                    pendingByWarehouse[whId] = (pendingByWarehouse[whId] || 0) + 1;
-                }
-            });
-        }
-
-        const res = await fetch('http://localhost:5000/api/v1/warehouses');
-        const json = await res.json();
-        if (json.success && json.data.length > 0) {
-            const currentValue = warehouseIdInput.value;
-            let newHtml = '';
-            
-            json.data.forEach(wh => {
-                const emergencies = pendingByWarehouse[wh._id] || 0;
-                const emergencyBadge = emergencies > 0 
-                    ? `<span class="bg-accent-red shadow-[0_0_8px_rgba(255,42,42,0.6)] text-white text-[9px] px-2 py-0.5 rounded-full animate-pulse">${emergencies}🚨</span>` 
-                    : `<span class="bg-black/10 dark:bg-white/10 text-[9px] px-2 py-0.5 rounded-full opacity-60">STANDBY</span>`;
-                
-                const isSelected = currentValue === wh._id;
-                const borderClass = isSelected ? 'border-statusHigh ring-1 ring-statusHigh' : 'border-transparent';
-                
-                newHtml += `
-                    <div class="warehouse-card flex items-center justify-between p-3 rounded-lg bg-white dark:bg-gray-800 border ${borderClass} cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-all" data-id="${wh._id}" data-code="${wh.code || ''}">
-                        <div class="flex flex-col text-left">
-                            <span class="font-bold text-xs">${wh.name}</span>
-                            <span class="text-[9px] opacity-60 uppercase tracking-widest">${wh.code} • ${wh.trucks.available} Trucks</span>
-                        </div>
-                        <div>${emergencyBadge}</div>
-                    </div>
-                `;
-            });
-            
-            // Only update DOM if options actually changed to avoid closing the dropdown unnecessarily
-            // Simple comparison (ignoring selected class changes for simplicity, but good enough for now)
-            if (!warehouseList.dataset.loadedHtml || warehouseList.dataset.loadedHtml !== newHtml) {
-                warehouseList.innerHTML = newHtml;
-                warehouseList.dataset.loadedHtml = newHtml;
-                
-                // Add click listeners to cards
-                const cards = warehouseList.querySelectorAll('.warehouse-card');
-                cards.forEach(card => {
-                    card.addEventListener('click', () => {
-                        // Deselect all
-                        cards.forEach(c => c.classList.remove('border-statusHigh', 'ring-1', 'ring-statusHigh', 'border-transparent'));
-                        cards.forEach(c => c.classList.add('border-transparent'));
-                        
-                        // Select this
-                        card.classList.remove('border-transparent');
-                        card.classList.add('border-statusHigh', 'ring-1', 'ring-statusHigh');
-                        
-                        warehouseIdInput.value = card.dataset.id;
-                        warehouseCodeInput.value = card.dataset.code;
-                        btnLogin.disabled = false;
-                    });
-                });
-            }
-        }
-    } catch (e) {
-        console.error("Failed to load warehouses:", e);
-    }
-}
-
 async function login(id, warehouseId, warehouseCode) {
-    if (!warehouseCode) {
-        alert("Please select a warehouse first.");
+    if (!warehouseId) {
+        alert("Driver must be assigned to a warehouse node.");
         return;
     }
-    
-    // Dynamically build the regex based on the warehouse code
-    // Example: if code is W2, regex is /^W2-\d+$/i
-    const driverRegex = new RegExp(`^${warehouseCode}-\\d+$`, 'i');
-    
-    if (!driverRegex.test(id)) {
-        alert(`Invalid Driver ID format for this warehouse. Please use an ID matching ${warehouseCode}-XX (e.g., ${warehouseCode}-01).`);
-        return;
-    }
-    
-    driverId = id;
-    displayDriverId.textContent = driverId;
     
     // Switch Screens
     loginScreen.classList.add('opacity-0', 'pointer-events-none');
+    
+    // Instead of driver regex formatting, we use the real authenticated user's name.
+    driverId = id;
+    displayDriverId.textContent = authManager.user?.name ? authManager.user.name.toUpperCase() : `UNIT ${id.substring(0,4).toUpperCase()}`;
     setTimeout(() => {
         loginScreen.classList.add('hidden');
         appScreen.classList.remove('hidden');
         appScreen.classList.add('flex');
     }, 300);
     
-    socketManager.connect(driverId, warehouseId);
+    // Connect Real-time Socket with authenticated JWT
+    socketManager.connect(driverId, warehouseId, authManager.accessToken);
 
     // Check if there are any pending dispatches we missed before logging in
     try {
@@ -269,10 +246,16 @@ function logout() {
         socketManager.socket.disconnect();
     }
     
+    authManager.logout();
+    
     driverId = null;
     currentMission = null;
     displayDriverId.textContent = 'DRV-###';
     resetDashboard();
+    
+    // Reset login button state
+    btnLogin.disabled = false;
+    btnLogin.innerHTML = 'Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>';
     
     appScreen.classList.add('hidden');
     appScreen.classList.remove('flex');

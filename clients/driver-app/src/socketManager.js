@@ -9,7 +9,7 @@ class SocketManager {
         this.driverId = null;
     }
 
-    connect(driverId, warehouseId) {
+    connect(driverId, warehouseId, token) {
         this.driverId = driverId;
         if (this.socket) {
             this.socket.disconnect();
@@ -18,7 +18,7 @@ class SocketManager {
         // Connect as driver
         this.socket = io(SOCKET_URL, {
             auth: {
-                token: 'mock_driver_token_123',
+                token: token,
                 driverId: driverId,
                 warehouseId: warehouseId
             }

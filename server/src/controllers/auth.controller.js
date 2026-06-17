@@ -7,7 +7,7 @@ import { UserRole } from '@dropzone/shared-domain';
 
 // --- Auth Validations ---
 export const RegisterSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(3),
   password: z.string().min(8),
   name: z.string().min(2),
   phone: z.string().min(10),
@@ -15,13 +15,11 @@ export const RegisterSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(3),
   password: z.string(),
 });
 
-export const RefreshSchema = z.object({
-  refreshToken: z.string(),
-});
+// Removed RefreshSchema because refreshToken is now in cookies
 
 /**
  * Auth Controller
@@ -71,7 +69,14 @@ export const AuthController = {
       const { email, password } = req.body;
 
       // Select passwordHash since it's hidden by default in the schema
-      const user = await User.findOne({ email }).select('+passwordHash +refreshTokenHash');
+      const user = await User.findOne({ 
+        $or: [
+          { email: email.toLowerCase() },
+          { name: email }
+        ]
+      })
+        .select('+passwordHash +refreshTokenHash')
+        .populate('assignedWarehouse', 'name code');
       
       if (!user || !user.isActive) {
         return sendError(res, 401, 'Invalid credentials or inactive account.');
@@ -95,7 +100,14 @@ export const AuthController = {
       delete userSafe.passwordHash;
       delete userSafe.refreshTokenHash;
 
-      return sendSuccess(res, 200, { user: userSafe, accessToken, refreshToken }, 'Login successful.');
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      return sendSuccess(res, 200, { user: userSafe, accessToken }, 'Login successful.');
     } catch (error) {
       console.error(error);
       return sendError(res, 500, 'Login failed.');
@@ -107,14 +119,19 @@ export const AuthController = {
    */
   async refresh(req, res) {
     try {
-      const { refreshToken } = req.body;
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        return sendError(res, 401, 'No refresh token provided.');
+      }
 
       const decoded = verifyRefreshToken(refreshToken);
       if (!decoded) {
         return sendError(res, 401, 'Invalid or expired refresh token.');
       }
 
-      const user = await User.findById(decoded.id).select('+refreshTokenHash');
+      const user = await User.findById(decoded.id)
+        .select('+refreshTokenHash')
+        .populate('assignedWarehouse', 'name code');
       if (!user || !user.isActive || !user.refreshTokenHash) {
         return sendError(res, 401, 'Invalid session.');
       }
@@ -132,7 +149,14 @@ export const AuthController = {
       user.refreshTokenHash = await bcrypt.hash(newRefreshToken, salt);
       await user.save();
 
-      return sendSuccess(res, 200, { accessToken: newAccessToken, refreshToken: newRefreshToken }, 'Token refreshed.');
+      res.cookie('refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+
+      return sendSuccess(res, 200, { accessToken: newAccessToken }, 'Token refreshed.');
     } catch (error) {
       console.error(error);
       return sendError(res, 500, 'Token refresh failed.');
@@ -149,6 +173,11 @@ export const AuthController = {
         user.refreshTokenHash = null;
         await user.save();
       }
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      });
       return sendSuccess(res, 200, null, 'Logout successful.');
     } catch (error) {
       return sendError(res, 500, 'Logout failed.');

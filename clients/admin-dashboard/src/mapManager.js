@@ -1,3 +1,5 @@
+import { authManager } from './authManager.js';
+
 class MapManager {
     constructor(containerId) {
         this.containerId = containerId;
@@ -56,7 +58,7 @@ class MapManager {
     async loadWarehouses() {
         try {
             const res = await fetch('http://localhost:5000/api/v1/warehouses', {
-                headers: { 'Authorization': `Bearer ${window.MOCK_HQ_TOKEN || ''}` }
+                headers: { 'Authorization': `Bearer ${authManager.accessToken || ''}` }
             });
             const result = await res.json();
             if (result.success) {
@@ -301,7 +303,7 @@ class MapManager {
                 const icon = L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [48, 48], iconAnchor: [24, 24] });
                 
                 const marker = L.marker(vehicle.location, {icon: icon, zIndexOffset: 1000}).addTo(this.map);
-                marker.bindTooltip(`Unit ${vehicle.id}`, { direction: 'top', offset: [0, -15], className: 'font-sans font-bold text-[9px] tracking-widest uppercase' });
+                marker.bindTooltip(`Unit ${vehicle.name}`, { direction: 'top', offset: [0, -15], className: 'font-sans font-bold text-[9px] tracking-widest uppercase' });
                 this.fleetMarkers[vehicle.id] = marker;
             } else {
                 // Animate existing truck smoothly

@@ -47,3 +47,23 @@ export const strictVolunteerIntakeLimiter = rateLimit({
     sendError(res, 429, 'You have reached the maximum number of requests for this hour. Please wait before submitting another request.');
   },
 });
+
+/**
+ * Auth Rate Limiter
+ * Restrict login attempts to prevent brute force attacks.
+ */
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // Limit each IP to 500 login requests per `window`
+  standardHeaders: true,
+  legacyHeaders: false,
+  
+  store: new RedisStore({
+    sendCommand: (...args) => redisClient.call(...args),
+    prefix: 'rl:auth:',
+  }),
+
+  handler: (req, res, next, options) => {
+    sendError(res, 429, 'Too many login attempts from this IP, please try again after 15 minutes.');
+  },
+});

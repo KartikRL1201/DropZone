@@ -24,8 +24,8 @@ class FleetEngine {
         console.log(`[FLEET ENGINE] Speed multiplier set to ${multiplier}x`);
     }
 
-    async acceptMission(driverId, crisisId, crisisName, originCoords, destCoords, manifest) {
-        console.log(`[FLEET ENGINE] Accepting mission for ${driverId} to ${crisisId}`);
+    async acceptMission(driverId, driverName, crisisId, crisisName, originCoords, destCoords, manifest) {
+        console.log(`[FLEET ENGINE] Accepting mission for ${driverName} (${driverId}) to ${crisisId}`);
         
         // Fetch route from OSRM
         const route = await this.fetchOSRMRoute(originCoords[0], originCoords[1], destCoords[0], destCoords[1]);
@@ -46,6 +46,7 @@ class FleetEngine {
 
         const mission = {
             driverId,
+            driverName,
             crisisId,
             crisisName,
             manifest,
@@ -235,6 +236,7 @@ class FleetEngine {
 
             telemetryBatch.push({
                 driverId,
+                driverName: mission.driverName,
                 location: mission.currentLocation,
                 heading: mission.heading,
                 state: mission.state,

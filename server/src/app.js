@@ -3,6 +3,8 @@ import cors from 'cors';
 import { corsConfig } from './config/cors.config.js';
 import { env } from './config/env.config.js';
 
+import cookieParser from 'cookie-parser';
+
 // Initialize the Express application
 const app = express();
 
@@ -10,7 +12,10 @@ const app = express();
 // 1. Trust proxy if we are behind a load balancer (e.g., Nginx, Heroku, AWS ELB)
 app.set('trust proxy', 1);
 
-// 2. Enable Cross-Origin Resource Sharing (CORS) based on our config
+// 2. Parse cookies BEFORE CORS so auth works seamlessly
+app.use(cookieParser());
+
+// 3. Enable Cross-Origin Resource Sharing (CORS) based on our config
 app.use(cors(corsConfig));
 
 // 3. Parse incoming JSON payloads (with a reasonable limit to prevent memory exhaustion attacks)

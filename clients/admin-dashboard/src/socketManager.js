@@ -30,9 +30,23 @@ class SocketManager {
             this._notify('status', 'disconnected');
         });
 
-        this.socket.on('connect_error', (error) => {
+        this.socket.on('connect_error', async (error) => {
             console.error('Connection Error:', error.message);
             this._notify('status', 'error');
+            
+            // If token expired, try to refresh and reconnect
+            if (error.message.includes('Invalid or expired token')) {
+                try {
+                    const { authManager } = await import('./authManager.js');
+                    const newToken = await authManager.refresh();
+                    if (newToken) {
+                        this.socket.auth.token = newToken;
+                        this.socket.connect();
+                    }
+                } catch (e) {
+                    console.error('Failed to refresh token for socket:', e);
+                }
+            }
         });
 
         // Listen for specific events

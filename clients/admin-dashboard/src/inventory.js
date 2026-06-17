@@ -1,3 +1,4 @@
+import { authManager } from './authManager.js';
 import { socketManager } from './socketManager.js';
 import { mapManager } from './mapManager.js';
 
@@ -85,10 +86,9 @@ class InventoryManager {
         if (this.airdropTimers[warehouseId]) return;
 
         try {
-            const token = window.MOCK_HQ_TOKEN;
             const res = await fetch(`http://localhost:5000/api/v1/warehouses/${warehouseId}/resupply`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authManager.accessToken || ''}` }
             });
             const data = await res.json();
             if (res.ok) {
@@ -109,7 +109,20 @@ class InventoryManager {
     render() {
         if (!this.container) return;
         
-        const warehouses = mapManager.landmarks || [];
+        let warehouses = mapManager.landmarks || [];
+        warehouses = [...warehouses].sort((a, b) => {
+            const isHQA = (a.code === 'HQ' || (a.name && a.name.includes('Central Command HQ')));
+            const isHQB = (b.code === 'HQ' || (b.name && b.name.includes('Central Command HQ')));
+            
+            if (isHQA && !isHQB) return -1;
+            if (!isHQA && isHQB) return 1;
+            
+            // Both are HQ or neither is HQ, sort alphanumerically by code or name
+            const codeA = a.code || a.name || '';
+            const codeB = b.code || b.name || '';
+            return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+        
         this.container.innerHTML = '';
 
         warehouses.forEach(wh => {

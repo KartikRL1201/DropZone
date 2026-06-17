@@ -19,11 +19,7 @@ export const requireAuth = (req, res, next) => {
     return sendError(res, 401, 'Unauthorized: Token not provided.');
   }
 
-  // Temporary development bypass for Admin Dashboard
-  if (token === 'mock-hq-token-123') {
-    req.user = { id: '111111111111111111111111', role: 'SUPER_ADMIN' };
-    return next();
-  }
+
 
   const decoded = verifyAccessToken(token);
 
@@ -34,4 +30,22 @@ export const requireAuth = (req, res, next) => {
   // Attach the decoded user info to the request for downstream controllers
   req.user = decoded;
   next();
+};
+
+/**
+ * Middleware factory to restrict endpoints based on user role.
+ * @param {string[]} allowedRoles Array of allowed roles (e.g. ['SUPER_ADMIN'])
+ */
+export const requireRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return sendError(res, 401, 'Unauthorized: Role missing.');
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return sendError(res, 403, 'Forbidden: Insufficient permissions.');
+    }
+    
+    next();
+  };
 };

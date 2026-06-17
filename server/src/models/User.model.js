@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
       lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address.'],
     },
     passwordHash: {
       type: String,
@@ -32,6 +31,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+    },
+    assignedWarehouse: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Warehouse',
+      required: function() {
+        return this.role === UserRole.DRIVER;
+      }
     },
     isActive: {
       type: Boolean,

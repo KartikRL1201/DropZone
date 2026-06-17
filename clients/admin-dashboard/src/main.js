@@ -3,15 +3,14 @@ import { queueManager } from './queue.js';
 import { mapManager } from './mapManager.js';
 import { fleetManager } from './fleetManager.js';
 import { inventoryManager } from './inventory.js';
+import { authManager } from './authManager.js';
+import { teamManager } from './team.js';
 
 // Connection UI Elements
 const indicator = document.getElementById('connection-indicator');
 const indicatorText = document.getElementById('connection-text');
 
-// Auth Token (Mocking for now, eventually grab from login)
-// In a real app we'd fetch this from localStorage after auth
-window.MOCK_HQ_TOKEN = 'mock-hq-token-123';
-const MOCK_HQ_TOKEN = window.MOCK_HQ_TOKEN;
+
 
 // Setup connection status listeners
 socketManager.on('status', (status) => {
@@ -151,11 +150,20 @@ function initTabs() {
     const navInventory = document.getElementById('nav-inventory');
     const navSimulator = document.getElementById('nav-simulator');
     const navMap = document.getElementById('nav-map');
+    const navTeam = document.getElementById('nav-team');
+    
     const viewQueue = document.getElementById('view-queue');
     const viewInventory = document.getElementById('view-inventory');
     const viewSimulator = document.getElementById('view-simulator');
+    const viewTeam = document.getElementById('view-team');
+    
     const queueSearch = document.getElementById('queue-search');
     const sectionTitle = document.getElementById('section-title');
+
+    // Show team nav only if SUPER_ADMIN
+    if (authManager.user && authManager.user.role === 'SUPER_ADMIN' && navTeam) {
+        navTeam.classList.remove('hidden');
+    }
 
     if(!navQueue) return;
 
@@ -170,13 +178,13 @@ function initTabs() {
 
     const switchTab = (activeNav, activeView, titleText) => {
         // Reset all navs
-        [navQueue, navInventory, navSimulator, navMap].forEach(nav => {
+        [navQueue, navInventory, navSimulator, navMap, navTeam].forEach(nav => {
             if(!nav) return;
             nav.classList.remove('opacity-100');
         });
         
         // Hide all views
-        [viewQueue, viewInventory, viewSimulator].forEach(view => {
+        [viewQueue, viewInventory, viewSimulator, viewTeam].forEach(view => {
             if(view) view.classList.add('hidden');
         });
 
@@ -226,6 +234,10 @@ function initTabs() {
     if(navInventory) navInventory.addEventListener('click', () => switchTab(navInventory, viewInventory, 'Inventory Status'));
     if(navSimulator) navSimulator.addEventListener('click', () => switchTab(navSimulator, viewSimulator, 'Simulation Engine'));
     if(navMap) navMap.addEventListener('click', () => switchTab(navMap, null, 'Operational Map'));
+    if(navTeam) navTeam.addEventListener('click', () => {
+        switchTab(navTeam, viewTeam, 'Personnel Management');
+        teamManager.fetchAndRender(); // Fetch fresh data on click
+    });
 }
 
 function initSimulator() {
@@ -290,11 +302,10 @@ function initSimulator() {
 
     const postCrisis = async (payload) => {
         try {
-            const response = await fetch('http://localhost:5000/api/v1/crises', {
+            const response = await authManager.secureFetch('http://localhost:5000/api/v1/crises', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${MOCK_HQ_TOKEN}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });
@@ -324,11 +335,10 @@ function initSimulator() {
 
         // Call backend dispatch to allocate trucks and deduct inventory
         try {
-            const response = await fetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
+            const response = await authManager.secureFetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${MOCK_HQ_TOKEN}` 
+                    'Content-Type': 'application/json'
                 }
             });
             const result = await response.json();
@@ -373,11 +383,10 @@ function initSimulator() {
                     modal.classList.add('hidden');
                     // Force dispatch with alternative warehouse
                     try {
-                        const resAlt = await fetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
+                        const resAlt = await authManager.secureFetch(`http://localhost:5000/api/v1/dispatch/${id}`, {
                             method: 'POST',
                             headers: { 
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${MOCK_HQ_TOKEN}` 
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({ warehouseId: alternative._id })
                         });
@@ -451,11 +460,12 @@ function initSimulator() {
         fleetManager.removeTruckForCrisis(id);
         
         try {
-            await fetch(`http://localhost:5000/api/v1/dispatch/${id}/return`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+            await authManager.secureFetch(`http://localhost:5000/api/v1/dispatch/${id}/return`, {
+                method: 'POST'
             });
-        } catch(e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     window.toggleRequests = async (id) => {
@@ -472,9 +482,7 @@ function initSimulator() {
         container.innerHTML = '<div class="text-center opacity-40 text-xs font-bold py-2">Loading requests...</div>';
         
         try {
-            const response = await fetch(`http://localhost:5000/api/v1/requests?crisisId=${id}`, {
-                headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
-            });
+            const response = await authManager.secureFetch(`http://localhost:5000/api/v1/requests?crisisId=${id}`);
             const result = await response.json();
             
             if (result.success && result.data && result.data.length > 0) {
@@ -520,9 +528,8 @@ function initSimulator() {
             fleetManager.clearAllTrucks();
             
             try {
-                const response = await fetch(`http://localhost:5000/api/v1/crises`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${MOCK_HQ_TOKEN}` }
+                const response = await authManager.secureFetch(`http://localhost:5000/api/v1/crises`, {
+                    method: 'DELETE'
                 });
             } catch(e) { console.error(e); }
         });
@@ -683,9 +690,10 @@ async function bootstrap() {
     initAnimations();
     initTabs();
     initSimulator();
+    teamManager.init();
     
-    // Connect Real-time Socket
-    socketManager.connect(MOCK_HQ_TOKEN);
+    // Connect Real-time Socket with actual JWT
+    socketManager.connect(authManager.accessToken);
     
     // Register sync listeners
     socketManager.on('crisis:delete', (data) => {
@@ -744,4 +752,75 @@ async function bootstrap() {
     }, 60000); 
 }
 
-bootstrap();
+function initAuth() {
+    const loginContainer = document.getElementById('login-container');
+    const dashboardContainer = document.getElementById('dashboard-container');
+    const loginForm = document.getElementById('login-form');
+    const loginError = document.getElementById('login-error');
+    const btnSubmit = document.getElementById('btn-login-submit');
+    const btnText = document.getElementById('login-btn-text');
+
+    const showDashboard = () => {
+        loginContainer.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+            loginContainer.classList.add('hidden');
+            dashboardContainer.classList.remove('hidden');
+            // Bootstrap app now that we're authed
+            bootstrap();
+        }, 500);
+    };
+
+    if (authManager.isAuthenticated()) {
+        showDashboard();
+    } else {
+        loginContainer.classList.remove('opacity-0', 'pointer-events-none', 'hidden');
+        dashboardContainer.classList.add('hidden');
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        
+        loginError.classList.add('hidden', 'opacity-0');
+        btnText.innerText = 'Authenticating...';
+        btnSubmit.disabled = true;
+        btnSubmit.classList.add('opacity-50');
+
+        try {
+            const data = await authManager.login(email, password);
+            if (authManager.user && authManager.user.role === 'SUPER_ADMIN') {
+                const navTeam = document.getElementById('nav-team');
+                if (navTeam) navTeam.classList.remove('hidden');
+            }
+            showDashboard();
+        } catch(err) {
+            loginError.innerText = err.message || 'Invalid credentials';
+            loginError.classList.remove('hidden');
+            requestAnimationFrame(() => loginError.classList.remove('opacity-0'));
+        } finally {
+            btnText.innerText = 'Authenticate';
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('opacity-50');
+        }
+    });
+
+    window.addEventListener('auth:expired', () => {
+        dashboardContainer.classList.add('hidden');
+        loginContainer.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+        // Stop socket
+        if(socketManager.socket) socketManager.socket.disconnect();
+    });
+
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            authManager.logout();
+            dashboardContainer.classList.add('hidden');
+            loginContainer.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+            if (socketManager.socket) socketManager.socket.disconnect();
+        });
+    }
+}
+
+initAuth();

@@ -34,7 +34,13 @@
                             orange: '#ff5c00',
                             green: '#19e39c',
                             red: '#ff2a2a'
-                        }
+                        },
+                        lumenaLight: '#ffffff',
+                        lumenaDark: '#050505',
+                        statusCritical: '#FF3366',
+                        statusMedium: '#FFB340',
+                        statusHigh: '#00F0FF',
+                        statusLow: '#808080'
                     }
                 }
             }
@@ -110,6 +116,37 @@
 </head>
 <body class="bg-krypton-lightPanel dark:bg-krypton-dark text-krypton-darker dark:text-krypton-light font-sans antialiased h-screen w-screen overflow-hidden flex flex-col selection:bg-accent-cyan selection:text-krypton-darker relative transition-colors duration-300">
 
+    <!-- Auth / Login Screen -->
+    <div id="login-container" class="absolute inset-0 z-[10000] flex items-center justify-center bg-krypton-lightPanel dark:bg-krypton-dark transition-opacity duration-500">
+        <div class="glass-panel p-10 rounded-2xl w-full max-w-sm flex flex-col items-center shadow-2xl relative overflow-hidden fade-up-element">
+            <!-- Decorative accent line -->
+            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-accent-blue to-accent-cyan"></div>
+            
+            <div class="font-geist font-black tracking-tighter text-3xl mb-2 mt-4 text-krypton-darker dark:text-white">DROPZONE</div>
+            <div class="text-[10px] font-bold tracking-[0.3em] uppercase text-accent-blue dark:text-accent-cyan mb-10 text-center opacity-80">Command Uplink</div>
+
+            <form id="login-form" class="w-full flex flex-col gap-5">
+                <div class="flex flex-col">
+                    <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1">Operator Email or Username</label>
+                    <input type="text" id="login-email" required class="w-full bg-white/50 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="admin@dropzone.com or admin1" />
+                </div>
+                <div class="flex flex-col mb-4">
+                    <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1">Passcode</label>
+                    <input type="password" id="login-password" required class="w-full bg-white/50 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="••••••••" />
+                </div>
+                
+                <button type="submit" id="btn-login-submit" class="w-full py-3.5 bg-krypton-darker text-white dark:bg-white dark:text-krypton-darker font-bold tracking-widest text-[11px] uppercase rounded-lg hover:opacity-90 transition-all flex justify-center items-center gap-2 group">
+                    <span id="login-btn-text">Authenticate</span>
+                    <span class="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                </button>
+            </form>
+            
+            <p id="login-error" class="text-accent-red text-xs font-bold mt-4 text-center hidden opacity-0 transition-opacity">Invalid credentials.</p>
+        </div>
+    </div>
+
+    <!-- Dashboard Container (Hidden until logged in) -->
+    <div id="dashboard-container" class="hidden w-full h-full relative">
     <!-- Absolute background map -->
     <div id="map-section" class="absolute inset-0 z-0">
         <div id="map" class="w-full h-full z-0"></div>
@@ -133,6 +170,7 @@
                     <button id="nav-inventory" class="dark:hover:text-accent-cyan hover:text-accent-blue transition-colors pb-1">Inventory</button>
                     <button id="nav-simulator" class="dark:hover:text-accent-cyan hover:text-accent-blue transition-colors pb-1">Simulator</button>
                     <button id="nav-map" class="dark:hover:text-accent-cyan hover:text-accent-blue transition-colors pb-1">Map</button>
+                    <button id="nav-team" class="hidden dark:hover:text-accent-cyan hover:text-accent-blue transition-colors pb-1">Team</button>
                 </div>
                 <div id="nav-slider" class="absolute bottom-0 h-[2px] bg-accent-blue dark:bg-accent-cyan transition-all duration-300 ease-out dark:shadow-[0_0_10px_rgba(0,240,255,0.8)]"></div>
             </nav>
@@ -159,6 +197,9 @@
                 <button id="theme-toggle" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full dark:hover:bg-white/10 hover:bg-black/5" title="Toggle Mode">
                     <span class="material-symbols-outlined text-[18px] dark:hidden block">dark_mode</span>
                     <span class="material-symbols-outlined text-[18px] hidden dark:block text-accent-cyan glow-text-cyan">light_mode</span>
+                </button>
+                <button id="btn-logout" class="opacity-60 hover:opacity-100 transition-opacity w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent-red/10 hover:text-accent-red" title="Logout">
+                    <span class="material-symbols-outlined text-[18px]">logout</span>
                 </button>
             </div>
         </header>
@@ -252,9 +293,93 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Team Management View -->
+                    <div id="view-team" class="hidden flex-col h-full">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Left: Create User Form -->
+                            <div class="lg:col-span-1 p-6 bg-white/50 dark:bg-black/40 border border-krypton-border rounded-xl h-fit">
+                                <h3 class="text-sm font-bold dark:text-accent-cyan text-accent-blue mb-4 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">person_add</span> Enlist Personnel
+                                </h3>
+                                <form id="team-form" class="flex flex-col gap-4">
+                                    <div>
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Full Name</label>
+                                        <input type="text" id="team-name" required class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="Jane Doe" />
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Email or Username</label>
+                                        <input type="text" id="team-email" required class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="jane@dropzone.com or jane_doe" />
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Phone</label>
+                                        <input type="tel" id="team-phone" required class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="+1 555-0199" />
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Role</label>
+                                        <select id="team-role" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm font-bold focus:ring-1 focus:ring-accent-cyan outline-none transition-all">
+                                            <option value="ADMIN">ADMIN</option>
+                                            <option value="DRIVER">DRIVER</option>
+                                        </select>
+                                    </div>
+                                    <div id="team-warehouse-container" class="hidden">
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Assigned Node</label>
+                                        <select id="team-warehouse" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm font-bold focus:ring-1 focus:ring-accent-cyan outline-none transition-all">
+                                            <!-- Warehouses populated via JS -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Initial Password</label>
+                                        <input type="password" id="team-password" required minlength="6" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20" placeholder="••••••••" />
+                                    </div>
+                                    <button type="submit" id="btn-team-submit" class="w-full py-3 mt-2 bg-krypton-darker text-white dark:bg-white dark:text-krypton-darker font-bold tracking-widest text-[11px] uppercase rounded-lg hover:opacity-90 transition-all flex justify-center items-center gap-2">
+                                        <span id="btn-team-submit-text">Register Member</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Right: Roster List -->
+                            <div class="lg:col-span-2 flex flex-col gap-4 h-full min-h-[400px]">
+                                
+                                <!-- Admins Table -->
+                                <div class="p-6 bg-white/50 dark:bg-black/40 border border-krypton-border rounded-xl flex flex-col flex-1">
+                                    <h3 class="text-sm font-bold dark:text-accent-cyan text-accent-blue mb-4 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span> Administrators
+                                    </h3>
+                                    <div class="grid grid-cols-12 gap-2 px-2 py-2 text-[9px] font-bold tracking-widest uppercase text-accent-blue dark:text-accent-cyan opacity-80 border-b border-krypton-border mb-2">
+                                        <div class="col-span-5">Operator</div>
+                                        <div class="col-span-4">Contact</div>
+                                        <div class="col-span-3 text-right">Actions</div>
+                                    </div>
+                                    <div id="admin-roster-body" class="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2 flex-1">
+                                        <div class="text-center opacity-40 text-xs font-bold py-4">Loading personnel...</div>
+                                    </div>
+                                </div>
+
+                                <!-- Drivers Table -->
+                                <div class="p-6 bg-white/50 dark:bg-black/40 border border-krypton-border rounded-xl flex flex-col flex-1">
+                                    <h3 class="text-sm font-bold dark:text-accent-cyan text-accent-blue mb-4 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">local_shipping</span> Fleet Drivers
+                                    </h3>
+                                    <div class="grid grid-cols-12 gap-2 px-2 py-2 text-[9px] font-bold tracking-widest uppercase text-accent-blue dark:text-accent-cyan opacity-80 border-b border-krypton-border mb-2">
+                                        <div class="col-span-3">Operator</div>
+                                        <div class="col-span-3">Assigned Node</div>
+                                        <div class="col-span-4">Contact</div>
+                                        <div class="col-span-2 text-right">Actions</div>
+                                    </div>
+                                    <div id="driver-roster-body" class="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2 flex-1">
+                                        <div class="text-center opacity-40 text-xs font-bold py-4">Loading personnel...</div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
+    </div>
+
     </div>
 
     <!-- Map Click Form Overlay (Hidden by default) -->
@@ -304,6 +429,37 @@
                 <button id="btn-fallback-cancel" class="px-6 py-3 rounded-lg text-[10px] font-bold tracking-widest uppercase border border-krypton-border hover:bg-black/5 dark:hover:bg-white/5 transition-colors">Cancel</button>
                 <button id="btn-fallback-confirm" class="px-6 py-3 rounded-lg text-[10px] font-bold tracking-widest uppercase bg-krypton-darker text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">Dispatch Alternative</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="fixed inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-[9999] hidden flex items-center justify-center">
+        <div class="bg-white dark:bg-krypton-panel p-8 rounded-2xl w-full max-w-md border border-krypton-border shadow-2xl fade-up-element">
+            <h3 class="text-2xl font-bold mb-6 text-krypton-darker dark:text-white">Edit Personnel</h3>
+            
+            <form id="edit-user-form" class="flex flex-col gap-4">
+                <input type="hidden" id="edit-user-id" />
+                <input type="hidden" id="edit-user-role" />
+                <div>
+                    <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Full Name</label>
+                    <input type="text" id="edit-user-name" required class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all" />
+                </div>
+                <div>
+                    <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Phone</label>
+                    <input type="tel" id="edit-user-phone" required class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm focus:ring-1 focus:ring-accent-cyan outline-none transition-all" />
+                </div>
+                <div id="edit-warehouse-container" class="hidden">
+                    <label class="text-[9px] font-bold tracking-widest uppercase opacity-60 mb-2 pl-1 block">Assigned Node</label>
+                    <select id="edit-user-warehouse" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-lg p-3 text-sm font-bold focus:ring-1 focus:ring-accent-cyan outline-none transition-all">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+                
+                <div class="flex gap-2 mt-4">
+                    <button type="button" id="btn-edit-cancel" class="flex-1 py-3 bg-black/5 dark:bg-white/5 font-bold tracking-widest text-[11px] uppercase rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all">Cancel</button>
+                    <button type="submit" id="btn-edit-submit" class="flex-1 py-3 bg-krypton-darker text-white dark:bg-white dark:text-krypton-darker font-bold tracking-widest text-[11px] uppercase rounded-lg hover:opacity-90 transition-all">Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 

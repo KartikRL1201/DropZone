@@ -26,10 +26,20 @@ export const initSocket = (httpServer) => {
   const subClient = pubClient.duplicate();
   io.adapter(createAdapter(pubClient, subClient));
 
-  // Authentication Middleware for WebSockets
   io.use((socket, next) => {
-    // Temporary bypass for Admin Dashboard development
-    socket.user = { id: '111111111111111111111111', role: 'SUPER_ADMIN' };
+    const token = socket.handshake?.auth?.token;
+
+
+    if (!token) {
+      return next(new Error('Authentication error: Token not provided'));
+    }
+
+    const decoded = verifyAccessToken(token);
+    if (!decoded) {
+      return next(new Error('Authentication error: Invalid or expired token'));
+    }
+
+    socket.user = decoded;
     next();
   });
 
@@ -40,8 +50,8 @@ export const initSocket = (httpServer) => {
     socket.emit('hq:speed_update', fleetEngine.globalSpeedMultiplier);
 
     // Sync mission state on login
-    const authDriverId = socket.handshake?.auth?.driverId;
-    if (authDriverId) {
+    if (socket.user.role === 'DRIVER') {
+      const authDriverId = socket.user.id;
       socket.join(`driver:${authDriverId}`);
       console.log(`[SOCKET] Driver ${authDriverId} joined personal room driver:${authDriverId}`);
       
@@ -53,7 +63,8 @@ export const initSocket = (httpServer) => {
     }
 
     socket.on('driver:start_engine', (data) => {
-        fleetEngine.startEngine(data.driverId);
+        // Enforce the driver ID is the authenticated user ID
+        fleetEngine.startEngine(socket.user.id);
     });
 
     socket.on('join_crisis_room', (crisisId) => {

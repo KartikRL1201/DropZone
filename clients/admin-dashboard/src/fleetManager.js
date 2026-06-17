@@ -16,6 +16,7 @@ class FleetManager {
                     }
                     this.vehicles.set(mission.driverId, {
                         id: mission.driverId,
+                        name: mission.driverName || `UNIT ${mission.driverId.substring(0, 4)}`,
                         crisisId: mission.crisisId,
                         location: mission.currentLocation,
                         heading: mission.heading,
@@ -45,6 +46,7 @@ class FleetManager {
                 batch.forEach(data => {
                     const vehicle = this.vehicles.get(data.driverId) || {};
                     vehicle.id = data.driverId;
+                    vehicle.name = data.driverName || `UNIT ${data.driverId.substring(0, 4)}`;
                     vehicle.crisisId = data.crisisId;
                     vehicle.location = data.location;
                     vehicle.heading = data.heading;

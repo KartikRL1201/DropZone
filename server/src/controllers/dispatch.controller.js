@@ -179,6 +179,10 @@ export const acceptDispatch = async (req, res, next) => {
         const { crisisId } = req.params;
         const { driverId } = req.body;
 
+        if (!driverId) {
+            return res.status(400).json({ success: false, error: 'driverId is required' });
+        }
+
         const crisis = await Crisis.findById(crisisId).populate('assignedWarehouseId');
         if (!crisis) {
             return res.status(404).json({ success: false, error: 'Crisis not found' });
@@ -208,8 +212,12 @@ export const acceptDispatch = async (req, res, next) => {
         // Ensure the global loop is running
         fleetEngine.start();
         
+        const user = await import('../models/User.model.js').then(m => m.User.findById(driverId));
+        const driverName = user ? user.name : `UNIT-${driverId.substring(0, 4).toUpperCase()}`;
+
         const mission = await fleetEngine.acceptMission(
             driverId, 
+            driverName,
             crisis._id, 
             crisis.name, 
             originCoords, 

@@ -119,26 +119,20 @@
             <h1 class="text-3xl font-geist font-bold tracking-tighter mb-2 text-krypton-darker dark:text-white">DROPZONE <span class="opacity-40">DRIVER</span></h1>
             <p class="text-xs font-bold tracking-widest uppercase opacity-60 mb-8 text-accent-orange">Secure Dispatch Uplink</p>
             
-            <form id="login-form" class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left relative z-10">
-                <!-- Left Column: Assigned Node -->
-                <div class="flex flex-col h-full">
-                    <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Assigned Node</label>
-                    <div id="warehouse-list" class="h-48 overflow-y-auto custom-scrollbar space-y-2 rounded-xl border border-krypton-border p-2 bg-black/5 dark:bg-black/40">
-                        <div class="text-center p-4 text-xs font-bold opacity-50 uppercase">Connecting to HQ...</div>
+            <form id="login-form" class="flex flex-col gap-6 text-left relative z-10 max-w-sm mx-auto">
+                <div class="flex flex-col gap-3">
+                    <div class="text-left">
+                        <label class="block text-[9px] font-bold tracking-widest uppercase opacity-60 mb-1">Operator Email or Username</label>
+                        <input type="text" id="login-email" required placeholder="driver1@dropzone.com or driver1" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-xl p-3 text-sm font-bold focus:ring-1 focus:ring-accent-orange focus:border-accent-orange outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20">
                     </div>
-                    <!-- Hidden inputs -->
-                    <input type="hidden" id="warehouse-id" required>
-                    <input type="hidden" id="warehouse-code">
+                    <div class="text-left">
+                        <label class="block text-[9px] font-bold tracking-widest uppercase opacity-60 mb-1">Passcode</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-xl p-3 text-sm font-bold focus:ring-1 focus:ring-accent-orange focus:border-accent-orange outline-none transition-all placeholder:text-krypton-darker/30 dark:placeholder:text-white/20">
+                    </div>
                 </div>
-
-                <!-- Right Column: Driver ID & Button -->
-                <div class="flex flex-col h-full">
-                    <div>
-                        <label class="block text-[10px] font-bold tracking-widest uppercase opacity-60 mb-2">Driver Auth Code</label>
-                        <input type="text" id="driver-id" placeholder="e.g. DRV-101" required autocomplete="off" class="w-full bg-black/5 dark:bg-black/40 border border-krypton-border rounded-xl p-4 text-sm font-bold focus:ring-1 focus:ring-accent-orange focus:border-accent-orange outline-none text-center tracking-widest uppercase transition-all">
-                    </div>
                     <div class="flex-1 min-h-[16px]"></div>
-                    <button type="submit" id="btn-login" disabled class="w-full py-4 bg-accent-orange text-white dark:text-black font-bold tracking-widest text-[10px] uppercase rounded-full hover:bg-orange-500 transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-30 disabled:cursor-not-allowed dark:shadow-[0_0_15px_rgba(255,92,0,0.4)]">
+                    <p id="login-error" class="text-accent-red text-xs font-bold text-center hidden opacity-0 transition-opacity mb-2">Invalid credentials.</p>
+                    <button type="submit" id="btn-login" class="w-full py-4 bg-accent-orange text-white dark:text-black font-bold tracking-widest text-[10px] uppercase rounded-full hover:bg-orange-500 transition-all flex justify-center items-center gap-2 mt-auto disabled:opacity-30 disabled:cursor-not-allowed dark:shadow-[0_0_15px_rgba(255,92,0,0.4)]">
                         Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>
                     </button>
                 </div>
