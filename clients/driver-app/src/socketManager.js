@@ -56,6 +56,10 @@ class SocketManager {
             this._notify('server:cancel_mission', data);
         });
         
+        this.socket.on('driver:warehouse_updated', (warehouse) => {
+            this._notify('driver:warehouse_updated', warehouse);
+        });
+
         this.socket.on('driver:returning', (data) => {
             if (data.driverId === this.driverId) {
                 this._notify('driver:returning', data);
@@ -90,6 +94,16 @@ class SocketManager {
     startEngine() {
         if (!this.socket || !this.socket.connected) return;
         this.socket.emit('driver:start_engine', { driverId: this.driverId });
+    }
+
+    subscribe(room) {
+        if (!this.socket || !this.socket.connected) return;
+        this.socket.emit('subscribe', room);
+    }
+
+    unsubscribe(room) {
+        if (!this.socket || !this.socket.connected) return;
+        this.socket.emit('unsubscribe', room);
     }
 
     on(event, callback) {

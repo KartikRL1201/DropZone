@@ -83,6 +83,11 @@ export const initSocket = (httpServer) => {
       }
     });
 
+    socket.on('unsubscribe', (room) => {
+      socket.leave(room);
+      console.log(`User ${socket.id} left room: ${room}`);
+    });
+
     socket.on('admin:speed_update', (speed) => {
       io.to('drivers').emit('admin:speed_update', speed);
       fleetEngine.setSpeed(speed);

@@ -91,7 +91,7 @@ async function init() {
                 }
                 
                 // Proceed with driver initialization
-                login(authManager.user._id, warehouse._id, warehouse.code);
+                login(authManager.user._id || authManager.user.id, warehouse._id || warehouse.id, warehouse.code);
             } catch (err) {
                 errorElement.innerText = err.message || 'Authentication failed.';
                 errorElement.classList.remove('hidden');
@@ -123,7 +123,7 @@ async function init() {
         // Auto-login since they are authenticated and have a session
         const warehouse = authManager.user.assignedWarehouse;
         if (warehouse) {
-            login(authManager.user._id, warehouse._id, warehouse.code);
+            login(authManager.user._id || authManager.user.id, warehouse._id || warehouse.id, warehouse.code);
         }
     }
 
@@ -182,6 +182,7 @@ async function init() {
     socketManager.on('dispatch:accepted', handleDispatchAccepted);
     socketManager.on('mission:arrived_destination', handleArrival);
     socketManager.on('mission:completed', handleCompleted);
+    socketManager.on('driver:warehouse_updated', handleWarehouseUpdated);
 
     socketManager.on('driver:returning', (data) => {
         if (currentMission) {
@@ -256,6 +257,16 @@ function logout() {
     // Reset login button state
     btnLogin.disabled = false;
     btnLogin.innerHTML = 'Establish Link <span class="material-symbols-outlined text-[18px]">satellite_alt</span>';
+    
+    const emailInput = document.getElementById('login-email');
+    const passwordInput = document.getElementById('login-password');
+    if (emailInput && passwordInput) {
+        emailInput.parentElement.classList.remove('hidden');
+        passwordInput.parentElement.classList.remove('hidden');
+        emailInput.value = '';
+        passwordInput.value = '';
+    }
+    document.getElementById('login-error').classList.add('hidden', 'opacity-0');
     
     appScreen.classList.add('hidden');
     appScreen.classList.remove('flex');
@@ -470,6 +481,39 @@ function handleDispatchRequested(data) {
 
     acceptModal.classList.remove('hidden');
     acceptModal.classList.add('flex');
+}
+
+async function handleWarehouseUpdated(warehouse) {
+    if (!warehouse) return;
+    console.log("Reassigned to new warehouse:", warehouse);
+    
+    const oldWarehouseId = authManager.user.assignedWarehouse?._id || authManager.user.assignedWarehouse?.id;
+    if (oldWarehouseId) {
+        socketManager.unsubscribe(`warehouse:${oldWarehouseId}`);
+    }
+    
+    // Update local auth
+    authManager.user.assignedWarehouse = warehouse;
+    sessionStorage.setItem('user', JSON.stringify(authManager.user));
+    
+    // Subscribe to new room
+    socketManager.subscribe(`warehouse:${warehouse._id}`);
+    
+    // Check pending dispatches for new warehouse
+    try {
+        const res = await fetch(`http://localhost:5000/api/v1/dispatch/pending/${warehouse._id}`);
+        const json = await res.json();
+        if (json.success && json.data && json.data.crisis) {
+            handleDispatchRequested(json.data);
+        } else {
+            // If no pending dispatch, hide modal if it was open
+            acceptModal.classList.add('hidden');
+            acceptModal.classList.remove('flex');
+            pendingDispatchData = null;
+        }
+    } catch (e) {
+        console.error("Failed to check pending dispatches after reassignment", e);
+    }
 }
 
 btnAcceptMission.addEventListener('click', async () => {

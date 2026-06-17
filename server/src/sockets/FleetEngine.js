@@ -160,6 +160,7 @@ class FleetEngine {
             if (mission.state === 'PENDING_START') {
                 telemetryBatch.push({
                     driverId,
+                    driverName: mission.driverName,
                     location: mission.currentLocation,
                     heading: mission.heading,
                     state: mission.state,
@@ -172,6 +173,7 @@ class FleetEngine {
                 // Keep emitting AT_DESTINATION so late clients see it
                 telemetryBatch.push({
                     driverId,
+                    driverName: mission.driverName,
                     location: mission.currentLocation,
                     heading: mission.heading,
                     state: mission.state,

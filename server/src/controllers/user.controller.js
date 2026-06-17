@@ -118,6 +118,16 @@ export const updateUser = async (req, res) => {
     await user.save();
 
     const userResponse = await User.findById(id).populate('assignedWarehouse', 'name code').select('-passwordHash -refreshTokenHash');
+    
+    // Notify the driver that their warehouse assignment changed
+    if (user.role === UserRole.DRIVER) {
+      const { getIO } = await import('../sockets/socketManager.js');
+      const io = getIO();
+      if (io) {
+        io.to(`driver:${user._id}`).emit('driver:warehouse_updated', userResponse.assignedWarehouse);
+      }
+    }
+    
     return sendSuccess(res, 200, userResponse, 'User updated successfully.');
   } catch (error) {
     console.error('Error updating user:', error.message);

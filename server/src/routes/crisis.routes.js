@@ -15,27 +15,27 @@ router.get('/:id', CrisisController.getCrisisById);
 // Admin-only mutation endpoints
 router.post('/', 
   requireAuth, 
-  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]), 
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COORDINATOR]), 
   validateRequest(CreateCrisisSchema), 
   CrisisController.createCrisis
 );
 
 router.patch('/:id', 
   requireAuth, 
-  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]), 
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COORDINATOR]), 
   validateRequest(UpdateCrisisSchema), 
   CrisisController.updateCrisis
 );
 
 router.delete('/:id',
   requireAuth,
-  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]),
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COORDINATOR]),
   CrisisController.deleteCrisis
 );
 
 router.delete('/',
   requireAuth,
-  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN]),
+  requireRoles([UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.COORDINATOR]),
   CrisisController.deleteAllCrises
 );
 

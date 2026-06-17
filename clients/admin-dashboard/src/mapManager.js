@@ -70,6 +70,24 @@ class MapManager {
         }
     }
 
+    enableInteractiveMode(callback) {
+        if (!this.map) return;
+        this.map.getContainer().style.cursor = 'crosshair';
+        this._mapClickListener = (e) => {
+            if (callback) callback(e.latlng.lat, e.latlng.lng);
+        };
+        this.map.on('click', this._mapClickListener);
+    }
+
+    disableInteractiveMode() {
+        if (!this.map) return;
+        this.map.getContainer().style.cursor = '';
+        if (this._mapClickListener) {
+            this.map.off('click', this._mapClickListener);
+            this._mapClickListener = null;
+        }
+    }
+
     renderLandmarks() {
         if (!this.map) return;
         
@@ -303,12 +321,13 @@ class MapManager {
                 const icon = L.divIcon({ className: 'custom-div-icon', html: iconHtml, iconSize: [48, 48], iconAnchor: [24, 24] });
                 
                 const marker = L.marker(vehicle.location, {icon: icon, zIndexOffset: 1000}).addTo(this.map);
-                marker.bindTooltip(`Unit ${vehicle.name}`, { direction: 'top', offset: [0, -15], className: 'font-sans font-bold text-[9px] tracking-widest uppercase' });
+                marker.bindTooltip(`${vehicle.name}`, { direction: 'top', offset: [0, -15], className: 'font-sans font-bold text-[9px] tracking-widest uppercase' });
                 this.fleetMarkers[vehicle.id] = marker;
             } else {
                 // Animate existing truck smoothly
                 const marker = this.fleetMarkers[vehicle.id];
                 marker.setLatLng(vehicle.location);
+                marker.setTooltipContent(`${vehicle.name}`);
                 
                 // Update rotation
                 const iconEl = marker.getElement();

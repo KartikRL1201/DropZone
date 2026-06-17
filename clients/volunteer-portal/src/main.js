@@ -174,6 +174,23 @@ function setMarker(lat, lng) {
     }
     document.getElementById('lat').value = lat;
     document.getElementById('lng').value = lng;
+
+    // Reverse geocode to auto-fill address
+    const addressInput = document.getElementById('location-address');
+    addressInput.placeholder = "Locating address...";
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.display_name) {
+                addressInput.value = data.display_name;
+            } else {
+                addressInput.placeholder = "Enter landmark or precise address...";
+            }
+        })
+        .catch(err => {
+            console.error('Reverse geocoding failed:', err);
+            addressInput.placeholder = "Enter landmark or precise address...";
+        });
 }
 
 async function fetchCrises() {

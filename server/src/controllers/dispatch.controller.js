@@ -1,6 +1,7 @@
 import { Crisis } from '../models/Crisis.model.js';
 import { Warehouse } from '../models/Warehouse.model.js';
 import { VolunteerRequest } from '../models/VolunteerRequest.model.js';
+import { User } from '../models/User.model.js';
 import { getIO } from '../sockets/socketManager.js';
 import { CrisisStatus } from '@dropzone/shared-domain';
 
@@ -212,8 +213,8 @@ export const acceptDispatch = async (req, res, next) => {
         // Ensure the global loop is running
         fleetEngine.start();
         
-        const user = await import('../models/User.model.js').then(m => m.User.findById(driverId));
-        const driverName = user ? user.name : `UNIT-${driverId.substring(0, 4).toUpperCase()}`;
+        const user = await User.findById(driverId);
+        const driverName = user && user.name ? user.name : `UNIT-${driverId.substring(0, 4).toUpperCase()}`;
 
         const mission = await fleetEngine.acceptMission(
             driverId, 
